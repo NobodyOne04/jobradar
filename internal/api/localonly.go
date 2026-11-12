@@ -11,8 +11,9 @@ import (
 // browser you use for everything else:
 //   - DNS rebinding: a page on evil.example re-pointed to 127.0.0.1 sends Host:
 //     evil.example, so any Host outside allowedHosts is rejected.
-//   - CSRF: browsers send Origin on cross-site POST, PATCH and DELETE, so a request whose
-//     Origin is not an allowed host is rejected.
+//   - CSRF: browsers send Origin on cross-site POST, PATCH and DELETE, so a request with an
+//     Origin must be same-origin: http(s) and exactly the Host it was sent to, port included
+//     (http://localhost:3000, another local app, is a different origin from localhost:8080).
 //
 // curl and other non-browser clients send no Origin and use localhost, so they pass.
 func withLocalOnly(allowedHosts []string, next http.Handler) http.Handler {
@@ -27,7 +28,9 @@ func withLocalOnly(allowedHosts []string, next http.Handler) http.Handler {
 		}
 		if origin := r.Header.Get("Origin"); origin != "" {
 			u, err := url.Parse(origin)
-			if err != nil || !allowed[strings.ToLower(u.Hostname())] {
+			sameOrigin := err == nil && (u.Scheme == "http" || u.Scheme == "https") &&
+				strings.EqualFold(u.Host, r.Host)
+			if !sameOrigin {
 				WriteProblem(w, http.StatusForbidden, "cross-origin request refused", "")
 				return
 			}

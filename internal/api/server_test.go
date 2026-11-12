@@ -130,6 +130,10 @@ func TestLocalOnly(t *testing.T) {
 		"DNS rebinding":           {"evil.example:8080", "http://evil.example:8080", 403},
 		"rebinding without port":  {"evil.example", "", 403},
 		"cross-site form post":    {"localhost:8080", "https://evil.example", 403},
+		"other local app's port":  {"localhost:8080", "http://localhost:3000", 403},
+		"same host, no port":      {"localhost:8080", "http://localhost", 403},
+		"non-http scheme":         {"localhost:8080", "file://localhost:8080", 403},
+		"same origin, other case": {"LocalHost:8080", "http://localhost:8080", 204},
 		"opaque origin (sandbox)": {"localhost:8080", "null", 403},
 	} {
 		t.Run(name, func(t *testing.T) {
