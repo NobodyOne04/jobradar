@@ -26,6 +26,34 @@ func (q *Queries) CloseJobsWithoutOpenPostings(ctx context.Context, jobIds []int
 	return result.RowsAffected(), nil
 }
 
+const closePostingsExpired = `-- name: ClosePostingsExpired :many
+UPDATE source_postings
+SET closed_at = now()
+WHERE source_id = $1 AND closed_at IS NULL AND expires_at <= now()
+RETURNING job_id
+`
+
+// Postings past their source-given expiry, whether or not the latest fetch still listed them.
+func (q *Queries) ClosePostingsExpired(ctx context.Context, sourceID int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, closePostingsExpired, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var job_id int64
+		if err := rows.Scan(&job_id); err != nil {
+			return nil, err
+		}
+		items = append(items, job_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const closePostingsNotSeenSince = `-- name: ClosePostingsNotSeenSince :many
 UPDATE source_postings
 SET closed_at = now()
@@ -145,8 +173,8 @@ func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) (int64, er
 }
 
 const insertPosting = `-- name: InsertPosting :exec
-INSERT INTO source_postings (source_id, external_id, job_id, url, raw_payload, payload_hash)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO source_postings (source_id, external_id, job_id, url, raw_payload, payload_hash, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertPostingParams struct {
@@ -156,6 +184,7 @@ type InsertPostingParams struct {
 	Url         string          `json:"url"`
 	RawPayload  json.RawMessage `json:"raw_payload"`
 	PayloadHash string          `json:"payload_hash"`
+	ExpiresAt   *time.Time      `json:"expires_at"`
 }
 
 func (q *Queries) InsertPosting(ctx context.Context, arg InsertPostingParams) error {
@@ -166,6 +195,7 @@ func (q *Queries) InsertPosting(ctx context.Context, arg InsertPostingParams) er
 		arg.Url,
 		arg.RawPayload,
 		arg.PayloadHash,
+		arg.ExpiresAt,
 	)
 	return err
 }
@@ -243,7 +273,8 @@ func (q *Queries) UpdateJob(ctx context.Context, arg UpdateJobParams) error {
 
 const updatePosting = `-- name: UpdatePosting :exec
 UPDATE source_postings
-SET url = $2, raw_payload = $3, payload_hash = $4, last_seen_at = now(), closed_at = NULL
+SET url = $2, raw_payload = $3, payload_hash = $4, expires_at = $5, last_seen_at = now(),
+    closed_at = NULL
 WHERE id = $1
 `
 
@@ -252,6 +283,7 @@ type UpdatePostingParams struct {
 	Url         string          `json:"url"`
 	RawPayload  json.RawMessage `json:"raw_payload"`
 	PayloadHash string          `json:"payload_hash"`
+	ExpiresAt   *time.Time      `json:"expires_at"`
 }
 
 func (q *Queries) UpdatePosting(ctx context.Context, arg UpdatePostingParams) error {
@@ -260,6 +292,7 @@ func (q *Queries) UpdatePosting(ctx context.Context, arg UpdatePostingParams) er
 		arg.Url,
 		arg.RawPayload,
 		arg.PayloadHash,
+		arg.ExpiresAt,
 	)
 	return err
 }

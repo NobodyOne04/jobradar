@@ -53,6 +53,7 @@ type SourcePosting struct {
 	FirstSeenAt time.Time       `json:"first_seen_at"`
 	LastSeenAt  time.Time       `json:"last_seen_at"`
 	ClosedAt    *time.Time      `json:"closed_at"`
+	ExpiresAt   *time.Time      `json:"expires_at"`
 }
 
 type SyncRun struct {

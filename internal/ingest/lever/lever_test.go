@@ -122,3 +122,15 @@ func TestNormalize(t *testing.T) {
 		t.Errorf("missing fields must stay unknown: %+v", bare)
 	}
 }
+
+func TestValidateConfig(t *testing.T) {
+	a := &Adapter{}
+	for cfg, ok := range map[string]bool{
+		`{}`: true, `{"region":"eu"}`: true, `{"region":"Global"}`: true,
+		`{"region":"us"}`: false, `{"region":1}`: false, `{"site":"x"}`: false,
+	} {
+		if err := a.ValidateConfig(json.RawMessage(cfg)); (err == nil) != ok {
+			t.Errorf("%s: err = %v", cfg, err)
+		}
+	}
+}

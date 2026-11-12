@@ -31,7 +31,7 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/ingest/`: `Adapter` interface and `Registry`, `Syncer` (one source: fetch,
   upsert per posting in a tx, close missing), `Scheduler` (due sources, advisory lock),
   `HTTPClient` (rate limit, retries), normalization and dedup keys; one subpackage per
-  source (`greenhouse/`, `lever/`, `ashby/`), each with recorded `testdata/` and its API terms in the
+  source (`greenhouse/`, `lever/`, `ashby/`, `himalayas/`), each with recorded `testdata/` and its API terms in the
   package doc
 - `internal/testdb/`: throwaway migrated Postgres for tests
 - `compose.yaml`: postgres, migrate (one-shot), backend, matcher (built from
@@ -62,6 +62,11 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
   in front of every route; a new non-local caller needs its host added there.
 - Adapters never guess: no structured field means `unknown`/nil. Reading remote, skills or
   seniority out of free text is the matcher's job (ADR 0005).
+- Himalayas terms (§113): its jobs keep `applicationLink` as their URL, any display of them says
+  "via Himalayas" with that link, they never leave this app (no feeds or exports to other
+  boards), and expired ones close (`source_postings.expires_at`).
+- A sync closes postings as missing only after a complete, fully stored listing: an adapter
+  that stops early returns `ingest.ErrTruncated` with what it got.
 - A new source kind: check its API docs and terms first, record them in the package doc,
   record a trimmed real response in `testdata/`, then register it in `serve`.
 - Ports on the host: 127.0.0.1 only. MLflow UI is 5001 (macOS AirPlay holds 5000); MLflow

@@ -47,7 +47,7 @@ func (s *Syncer) SyncOn(ctx context.Context, db DB, src store.Source) (Counts, e
 	}
 	log := s.Log.With("source_id", src.ID, "kind", src.Kind, "sync_run_id", run.ID)
 
-	counts, failed, err := s.sync(ctx, db, q, src, run, log)
+	counts, partial, err := s.sync(ctx, db, q, src, run, log)
 	status := "succeeded"
 	var errText *string
 	switch {
@@ -55,10 +55,9 @@ func (s *Syncer) SyncOn(ctx context.Context, db DB, src store.Source) (Counts, e
 		status = "failed"
 		msg := err.Error()
 		errText = &msg
-	case failed > 0:
+	case partial != "":
 		status = "partial"
-		msg := fmt.Sprintf("%d postings could not be stored; see logs", failed)
-		errText = &msg
+		errText = &partial
 	}
 	// Record the outcome even if ctx was cancelled (shutdown): use a fresh context.
 	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultDBTimeout)
@@ -74,23 +73,25 @@ func (s *Syncer) SyncOn(ctx context.Context, db DB, src store.Source) (Counts, e
 	return counts, err
 }
 
+// sync does the work of SyncOn. partial is non-empty, and says why, when the run stored what
+// it could but must not count as complete.
 func (s *Syncer) sync(ctx context.Context, db DB, q *store.Queries, src store.Source, run store.SyncRun,
-	log *slog.Logger) (Counts, int, error) {
-	var c Counts
+	log *slog.Logger) (c Counts, partial string, err error) {
 	adapter, err := s.Adapters.Get(src.Kind)
 	if err != nil {
-		return c, 0, err
+		return c, "", err
 	}
 	postings, err := adapter.Fetch(ctx, src)
-	if err != nil {
-		return c, 0, fmt.Errorf("fetch: %w", err)
+	truncated := errors.Is(err, ErrTruncated)
+	if err != nil && !truncated {
+		return c, "", fmt.Errorf("fetch: %w", err)
 	}
 	c.Fetched = int32(len(postings))
 
 	failed := 0
 	for _, raw := range postings {
 		if ctx.Err() != nil {
-			return c, failed, ctx.Err()
+			return c, "", ctx.Err()
 		}
 		result, err := s.upsert(ctx, db, adapter, src, raw)
 		if err != nil {
@@ -108,24 +109,34 @@ func (s *Syncer) sync(ctx context.Context, db DB, q *store.Queries, src store.So
 			c.Unchanged++
 		}
 	}
-	if failed > 0 {
-		// Unstored postings were not seen this run; closing "missing" ones would be wrong.
-		return c, failed, nil
-	}
-
-	jobIDs, err := q.ClosePostingsNotSeenSince(ctx, store.ClosePostingsNotSeenSinceParams{
-		SourceID: src.ID, LastSeenAt: run.StartedAt,
-	})
+	// Expired postings close on every run: expiry is the source's own word, not an inference.
+	jobIDs, err := q.ClosePostingsExpired(ctx, src.ID)
 	if err != nil {
-		return c, failed, fmt.Errorf("close missing postings: %w", err)
+		return c, "", fmt.Errorf("close expired postings: %w", err)
+	}
+	if failed == 0 && !truncated {
+		// Only a complete, fully stored listing proves the others are gone.
+		missing, err := q.ClosePostingsNotSeenSince(ctx, store.ClosePostingsNotSeenSinceParams{
+			SourceID: src.ID, LastSeenAt: run.StartedAt,
+		})
+		if err != nil {
+			return c, "", fmt.Errorf("close missing postings: %w", err)
+		}
+		jobIDs = append(jobIDs, missing...)
+	}
+	switch {
+	case failed > 0:
+		partial = fmt.Sprintf("%d postings could not be stored, so none were closed as missing; see logs", failed)
+	case truncated:
+		partial = "listing truncated: only the first postings were fetched, so none were closed as missing; narrow the search"
 	}
 	c.Closed = int32(len(jobIDs))
 	if len(jobIDs) > 0 {
 		if _, err := q.CloseJobsWithoutOpenPostings(ctx, jobIDs); err != nil {
-			return c, failed, fmt.Errorf("close jobs: %w", err)
+			return c, "", fmt.Errorf("close jobs: %w", err)
 		}
 	}
-	return c, failed, nil
+	return c, partial, nil
 }
 
 type upsertResult int
@@ -191,6 +202,7 @@ func (s *Syncer) upsert(ctx context.Context, db DB, a Adapter, src store.Source,
 		}
 		if err := q.UpdatePosting(ctx, store.UpdatePostingParams{
 			ID: existing.ID, Url: raw.URL, RawPayload: raw.Payload, PayloadHash: payloadHash,
+			ExpiresAt: raw.ExpiresAt,
 		}); err != nil {
 			return 0, err
 		}
@@ -213,7 +225,7 @@ func (s *Syncer) upsert(ctx context.Context, db DB, a Adapter, src store.Source,
 	}
 	if err := q.InsertPosting(ctx, store.InsertPostingParams{
 		SourceID: src.ID, ExternalID: raw.ExternalID, JobID: jobID, Url: raw.URL,
-		RawPayload: raw.Payload, PayloadHash: payloadHash,
+		RawPayload: raw.Payload, PayloadHash: payloadHash, ExpiresAt: raw.ExpiresAt,
 	}); err != nil {
 		return 0, err
 	}

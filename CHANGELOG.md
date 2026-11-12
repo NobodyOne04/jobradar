@@ -3,11 +3,14 @@
 ## Unreleased
 
 ### Fixed
+- Jobs whose location lists ~200 countries could not be stored: dedup keys are now SHA-256 hashes (existing keys migrated)
 - Syncs could deadlock when as many ran at once as the pool had connections; each sync now uses one connection, and manual syncs share the concurrency limit
 - The API refuses foreign Host headers and cross-site Origins, so web pages in your browser cannot call it (DNS rebinding, CSRF); `ALLOWED_HOSTS` sets the allowed names
 - Empty source and run lists are `[]` instead of `null`
 
 ### Added
+- Himalayas adapter: saved searches with validated filters, 500-job cap reported as a partial run, expired jobs closed on every sync, Himalayas terms recorded
+- Source config is validated when a source is created (Lever region, Himalayas filters)
 - Ashby adapter: salary from the compensation summary, workplace and employment type, all locations; unlisted postings skipped
 - Lever adapter: paged fetch, EU sites via `{"region":"eu"}`, salary, workplace type, country, posting date; requirement lists kept in the description
 - Project spec and Phase 0 architecture proposal for review

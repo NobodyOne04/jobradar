@@ -15,6 +15,7 @@ import (
 
 	"github.com/NobodyOne04/jobradar/internal/ingest"
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
+	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
 	"github.com/NobodyOne04/jobradar/internal/store"
 	"github.com/NobodyOne04/jobradar/internal/testdb"
 )
@@ -36,7 +37,7 @@ func sourcesAPI(t *testing.T) (http.Handler, *Sources) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	adapter := &greenhouse.Adapter{Client: ingest.NewHTTPClient(1000), BaseURL: gh.URL + "/"}
 	sched := &ingest.Scheduler{
-		Syncer:      &ingest.Syncer{Pool: st.Pool, Adapters: ingest.NewRegistry(adapter), Log: log},
+		Syncer:      &ingest.Syncer{Pool: st.Pool, Adapters: ingest.NewRegistry(adapter, lever.New(ingest.NewHTTPClient(1000))), Log: log},
 		Concurrency: 1, Log: log,
 	}
 	s := &Sources{Queries: store.New(st.Pool), Scheduler: sched, Log: log, Background: context.Background()}
@@ -57,7 +58,7 @@ func TestCreateSourceValidation(t *testing.T) {
 		status int
 	}{
 		"unsupported kind": {`{"kind":"monster","board_token":"x"}`, 422},
-		"not yet built":    {`{"kind":"himalayas","board_token":"x"}`, 422},
+		"bad lever config": {`{"kind":"lever","board_token":"x","config":{"region":"us"}}`, 422},
 		"empty token":      {`{"kind":"greenhouse","board_token":"  "}`, 422},
 		"control chars":    {`{"kind":"greenhouse","board_token":"a\nb"}`, 422},
 		"long token":       {`{"kind":"greenhouse","board_token":"` + strings.Repeat("a", 201) + `"}`, 422},

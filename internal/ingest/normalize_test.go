@@ -1,6 +1,11 @@
 package ingest
 
-import "testing"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
+	"testing"
+)
 
 func TestCompanyKey(t *testing.T) {
 	for in, want := range map[string]string{
@@ -49,5 +54,20 @@ func TestContentHashChangesWithFields(t *testing.T) {
 	j.LocationText = "Remote"
 	if h1 == ContentHash(j, "Acme", "text") {
 		t.Error("location change did not change the hash")
+	}
+}
+
+func TestDedupKeyStaysShortForHugeLocations(t *testing.T) {
+	loc := strings.Repeat("Bosnia and Herzegovina, ", 300)
+	if k := DedupKey("acme", "Data Engineer", loc); len(k) != 64 {
+		t.Errorf("key length %d, want 64", len(k))
+	}
+}
+
+// The migration hashes old plain keys with SQL sha256; this pins the plain form it hashes.
+func TestDedupKeyIsSHA256OfPlainKey(t *testing.T) {
+	sum := sha256.Sum256([]byte("acme|data engineer|berlin germany"))
+	if got, want := DedupKey("acme", "Data Engineer", "Berlin, Germany"), hex.EncodeToString(sum[:]); got != want {
+		t.Errorf("got %s, want %s", got, want)
 	}
 }

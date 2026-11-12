@@ -5,6 +5,7 @@ package ingest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,6 +17,18 @@ type RawPosting struct {
 	ExternalID string          // the source's own ID, unique within the source
 	URL        string          // where a person views or applies to it
 	Payload    json.RawMessage // the source's JSON for this posting, kept as is
+	ExpiresAt  *time.Time      // when the source says it stops being listed; nil if it does not say
+}
+
+// ErrTruncated is returned by Fetch, together with the postings it did get, when the source
+// has more than the adapter will fetch. The sync stores what it got but closes nothing as
+// "missing", because the rest may still be listed.
+var ErrTruncated = errors.New("listing truncated")
+
+// ConfigValidator is implemented by adapters whose sources take settings in config. The API
+// calls it when a source is created, so a bad config fails then, not at every sync.
+type ConfigValidator interface {
+	ValidateConfig(config json.RawMessage) error
 }
 
 // NormalizedJob is the source-independent job. Unknown values stay unknown: empty strings,
