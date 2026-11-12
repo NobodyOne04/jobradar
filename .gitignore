@@ -25,3 +25,6 @@ __pycache__/
 # Editors
 .idea/
 .vscode/
+
+# local backups: personal data
+/backup/

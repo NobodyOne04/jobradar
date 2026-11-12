@@ -1,0 +1,10 @@
+.git
+.github
+.env*
+docs
+profiles
+labels
+deploy
+scripts
+contracts
+**/*_test.go

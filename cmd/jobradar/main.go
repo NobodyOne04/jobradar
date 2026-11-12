@@ -1,4 +1,5 @@
-// Command jobradar is the backend: `serve` runs the API, `migrate up|down|status` the schema.
+// Command jobradar is the backend: `serve` runs the API, `migrate up|down|status` the schema,
+// `healthcheck` probes /readyz for Docker (the distroless image has no shell or curl).
 package main
 
 import (
@@ -6,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,7 +19,7 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
 
-const usage = "usage: jobradar serve | migrate up|down|status"
+const usage = "usage: jobradar serve | migrate up|down|status | healthcheck"
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -29,6 +31,9 @@ func main() {
 func run(args []string) error {
 	if len(args) == 0 {
 		return errors.New(usage)
+	}
+	if args[0] == "healthcheck" {
+		return healthcheck(os.Getenv("HTTP_ADDR"))
 	}
 	cfg, err := config.FromEnv()
 	if err != nil {
@@ -105,6 +110,9 @@ func migrate(ctx context.Context, log *slog.Logger, st *store.Store, cmd string)
 	switch cmd {
 	case "up":
 		results, err := p.Up(ctx)
+		if err == nil && len(results) == 0 {
+			log.Info("schema up to date")
+		}
 		for _, r := range results {
 			log.Info("migrated up", "version", r.Source.Version, "file", r.Source.Path, "duration_ms", r.Duration.Milliseconds())
 		}
@@ -124,4 +132,25 @@ func migrate(ctx context.Context, log *slog.Logger, st *store.Store, cmd string)
 	default:
 		return errors.New(usage)
 	}
+}
+
+// healthcheck needs no DATABASE_URL: it only asks the running server whether it is ready.
+func healthcheck(addr string) error {
+	if addr == "" {
+		addr = ":8080"
+	}
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return fmt.Errorf("HTTP_ADDR %q: %w", addr, err)
+	}
+	client := http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + port + "/readyz")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("not ready: %s", resp.Status)
+	}
+	return nil
 }

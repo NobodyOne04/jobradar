@@ -27,3 +27,15 @@ jobs:
       - name: go test (database tests use Docker via testcontainers)
         run: go test -race ./...
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: backend image
+        run: docker build -t jobradar-backend:ci .
+      - name: healthcheck fails cleanly with no server
+        run: |
+          if docker run --rm jobradar-backend:ci healthcheck; then exit 1; fi
+      - name: mlflow image
+        run: docker build -t jobradar-mlflow:ci deploy/mlflow

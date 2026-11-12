@@ -1,0 +1,99 @@
+# The whole system on one machine (ADR 0003, MLflow per ADR 0010).
+# Setup: README "Run it". Only the API (8080) and the MLflow UI (5001) are published,
+# and only on 127.0.0.1.
+name: jobradar
+
+x-required: &required
+  # Fail fast with a clear message instead of starting with an empty secret.
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      <<: *required
+      JOBRADAR_DB_PASSWORD: ${JOBRADAR_DB_PASSWORD:?set JOBRADAR_DB_PASSWORD in .env}
+      MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD:?set MLFLOW_DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql  # Postgres 18 images keep data under a versioned subdir
+      - ./deploy/postgres/10-databases.sh:/docker-entrypoint-initdb.d/10-databases.sh:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "jobradar"]  # TCP: not up until init scripts finish
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build: .
+    image: jobradar-backend:local
+    command: ["migrate", "up"]
+    environment: &backend-env
+      DATABASE_URL: postgres://jobradar:${JOBRADAR_DB_PASSWORD}@postgres:5432/jobradar?sslmode=disable
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    image: jobradar-backend:local
+    restart: unless-stopped
+    environment: *backend-env
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      matcher:
+        condition: service_started  # not healthy: a matcher outage must not stop the backend
+    healthcheck:
+      test: ["CMD", "/jobradar", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  matcher:
+    build: ${MATCHER_SRC:-../jobradar-matcher}
+    image: jobradar-matcher:${MATCHER_VERSION:?set MATCHER_VERSION to the content of contracts/MATCHER_VERSION}
+    restart: unless-stopped
+    environment:
+      MATCHER_TOKEN: ${MATCHER_TOKEN:?set MATCHER_TOKEN in .env (16+ characters)}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  mlflow:
+    build: deploy/mlflow
+    image: jobradar-mlflow:3.18.0
+    restart: unless-stopped
+    command:
+      - mlflow
+      - server
+      - --backend-store-uri=postgresql://mlflow:${MLFLOW_DB_PASSWORD}@postgres:5432/mlflow
+      - --serve-artifacts
+      - --artifacts-destination=/mlartifacts
+      - --host=0.0.0.0
+      - --port=5000
+      # MLflow rejects unknown Host headers (DNS-rebinding guard): allow exactly the names
+      # used here, the compose-network name and the published UI port.
+      - --allowed-hosts=mlflow:5000,localhost:5001,127.0.0.1:5001
+    volumes:
+      - mlartifacts:/mlartifacts
+    ports:
+      - "127.0.0.1:5001:5000"  # host 5001: macOS AirPlay Receiver holds 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  pgdata:
+  mlartifacts:
