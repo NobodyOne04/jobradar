@@ -7,7 +7,9 @@ Python matching service, on PostgreSQL, run with Docker Compose.
 None yet: Phase 0 (architecture) comes before any code.
 
 ## Layout
-- `docs/SPEC.md`: the project specification (to be added)
+- `docs/SPEC.md`: the project specification
+- `docs/ARCHITECTURE.md`: Phase 0 proposal (status Proposed until I approve; approved
+  decisions move to `docs/adr/`)
 
 ## Conventions
 - Phase 0 first: architecture proposal and ADRs, approved by me, before any implementation
