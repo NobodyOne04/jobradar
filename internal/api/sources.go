@@ -49,7 +49,7 @@ func (s *Sources) list(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"sources": sources})
+	writeJSON(w, http.StatusOK, map[string]any{"sources": nonNil(sources)})
 }
 
 type createSource struct {
@@ -183,7 +183,7 @@ func (s *Sources) runs(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"runs": runs})
+	writeJSON(w, http.StatusOK, map[string]any{"runs": nonNil(runs)})
 }
 
 func (s *Sources) internal(w http.ResponseWriter, r *http.Request, err error) {
@@ -221,6 +221,14 @@ func checkText(field, v string, minLen, maxLen int) string {
 		return field + " must not contain control characters"
 	}
 	return ""
+}
+
+// nonNil makes an empty result encode as [] rather than null.
+func nonNil[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
 }
 
 func isJSONObject(raw json.RawMessage) bool {

@@ -113,7 +113,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           api.NewHandler(log, ready, cfg.RequestTimeout, sources.Register),
+		Handler:           api.NewHandler(log, ready, cfg.RequestTimeout, cfg.AllowedHosts, sources.Register),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      cfg.RequestTimeout + 5*time.Second, // backstop behind the per-request deadline
 	}

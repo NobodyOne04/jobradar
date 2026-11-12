@@ -20,6 +20,7 @@ type Config struct {
 	ShutdownTimeout time.Duration // SHUTDOWN_TIMEOUT, default 10s
 	SyncInterval    time.Duration // SYNC_INTERVAL: how old a source's last good sync may get, default 6h
 	SyncConcurrency int           // SYNC_CONCURRENCY: sources synced at once, default 4
+	AllowedHosts    []string      // ALLOWED_HOSTS: Host names the API answers to, default localhost,127.0.0.1,::1
 }
 
 // FromEnv reads the environment and returns every invalid setting at once.
@@ -55,6 +56,14 @@ func parse(getenv func(string) string) (Config, error) {
 		errs = append(errs, fmt.Errorf("SYNC_CONCURRENCY must be 1-32, got %q", get("SYNC_CONCURRENCY", "4")))
 	} else {
 		c.SyncConcurrency = n
+	}
+	for h := range strings.SplitSeq(get("ALLOWED_HOSTS", "localhost,127.0.0.1,::1"), ",") {
+		if h = strings.ToLower(strings.TrimSpace(h)); h != "" {
+			c.AllowedHosts = append(c.AllowedHosts, h)
+		}
+	}
+	if len(c.AllowedHosts) == 0 {
+		errs = append(errs, errors.New("ALLOWED_HOSTS must list at least one host"))
 	}
 	if c.DatabaseURL == "" {
 		errs = append(errs, errors.New("DATABASE_URL must be set"))
