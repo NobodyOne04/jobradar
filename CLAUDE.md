@@ -11,6 +11,8 @@ go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run   # CI
 govulncheck ./...                                  # CI
 go run ./cmd/jobradar migrate up|down|status       # needs DATABASE_URL (see .env.example)
 go run ./cmd/jobradar serve                        # :8080; /healthz, /readyz
+cp .env.example .env && docker compose up -d --build   # whole system; README "Run it"
+docker compose ps                                  # health of each service
 scripts/pin-matcher.sh <commit>   # pin a matcher commit on its main; updates contracts/
 git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 ```
@@ -23,6 +25,11 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/api/`: router (`NewHandler`), middleware (request ID, log, recover, deadline),
   `WriteProblem` for every error; `internal/config/`: env settings, all errors at once;
   `internal/store/`: pgx pool, goose migrator, `SchemaStatus`
+- `compose.yaml`: postgres, migrate (one-shot), backend, matcher (built from
+  `${MATCHER_SRC:-../jobradar-matcher}`), mlflow; `Dockerfile`: backend (distroless, the
+  binary's `healthcheck` subcommand is its probe); `deploy/mlflow/Dockerfile`,
+  `deploy/postgres/10-databases.sh` (creates the `jobradar` and `mlflow` DBs and roles, first
+  start only)
 - `migrations/`: goose SQL files `NNNNN_name.sql`, embedded in the binary; never edit an
   applied one, add a new file
 - `contracts/`: the pinned matcher: `MATCHER_REF` (commit SHA, no tags yet),
@@ -42,4 +49,7 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
   panics): log the detail with the `request_id`, return a short title.
 - Pass `r.Context()` to every DB/HTTP call: the request deadline relies on it.
 - sqlc arrives with the first tables (ADR 0005); CI then adds `sqlc diff`.
+- Ports on the host: 127.0.0.1 only. MLflow UI is 5001 (macOS AirPlay holds 5000); MLflow
+  only accepts the Host names in `--allowed-hosts`: add one there if a new caller appears.
+- Never `docker compose down -v` on the real stack: it deletes the databases and models.
 - Candidate data is personal: never hardcode it in the matching engine, never log it.
