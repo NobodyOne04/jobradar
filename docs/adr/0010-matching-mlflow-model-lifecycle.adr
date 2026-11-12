@@ -23,17 +23,21 @@ side (training, registration, loading) is in `jobradar-matcher` ADR 0004.
 **MLflow service** (added to `compose.yaml` by this ADR, on top of
 [0003](0003-local-deployment-compose.adr)):
 - `mlflow` is built from `deploy/mlflow/Dockerfile`: the official
-  `ghcr.io/mlflow/mlflow:v<pinned>` image plus `psycopg2-binary`, which the official image
-  lacks for a Postgres backend store.
+  `ghcr.io/mlflow/mlflow:v3.18.0` image plus `psycopg[binary]` (psycopg 3), which the
+  official image lacks for a Postgres backend store. Not psycopg2: SQLAlchemy 2.1, used by
+  MLflow 3.18, maps `postgresql://` to psycopg 3.
 - The server runs `mlflow server --backend-store-uri postgresql://…/mlflow --serve-artifacts
-  --artifacts-destination /mlartifacts --host 0.0.0.0 --port 5000`.
+  --artifacts-destination /mlartifacts --host 0.0.0.0 --port 5000
+  --allowed-hosts=mlflow:5000,localhost:5001,127.0.0.1:5001`. MLflow's DNS-rebinding guard
+  rejects any other Host header with 403, so a new caller's host name must be added there.
 - Backend store: a separate database `mlflow` in the existing Postgres, created by an init
   script, with its own user. MLflow runs its own migrations on it. The backend's database
   is never touched by MLflow, and the backend never touches MLflow's tables.
 - Artifacts live in the volume `mlartifacts`. They are served through the MLflow server,
   so clients never mount the volume.
-- Ports: `127.0.0.1:5000:5000` for the UI; inside the compose network, `http://mlflow:5000`.
-  No auth, the same localhost-only stance as the API (Q2).
+- Ports: `127.0.0.1:5001:5000` for the UI (host port 5001, because macOS AirPlay Receiver
+  holds 5000); inside the compose network, `http://mlflow:5000`. No auth, the same
+  localhost-only stance as the API (Q2).
 - `depends_on: postgres: service_healthy`; healthcheck `GET /health`.
 - Backup: the README procedure adds `pg_dump mlflow` and a tar of `mlartifacts`.
 - This replaces the `models` volume that 0003 first described. 0003 has been updated to
