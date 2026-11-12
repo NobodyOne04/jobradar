@@ -1,0 +1,125 @@
+# 0010. Matching orchestration with MLflow: the `champion` alias decides the live model
+
+- Status: Proposed (not approved)
+- Date: 2026-11-13
+
+MLflow runs locally and holds every model version with its training run, metrics and
+artifacts. The `@champion` alias in the MLflow registry decides which version is live. The
+backend follows that alias, records each change it sees, and stores match results per
+model version, so a rollback (moving the alias back) takes effect without recomputing.
+
+Replaces the rejected [0007](0007-matching-orchestration-model-versions.adr). The matcher
+side (training, registration, loading) is in `jobradar-matcher` ADR 0004.
+
+## Technical details
+
+**Problem.**
+- Results must be reproducible and traceable to a model version (SPEC §6.2, §6.7), and
+  models must be replaceable (SPEC §6.8).
+- You want to retrain, and to roll back a bad version quickly.
+- You chose MLflow for this, with the registry alias as the source of truth for the live
+  version (Phase 0 review).
+
+**MLflow service** (added to `compose.yaml` by this ADR, on top of
+[0003](0003-local-deployment-compose.adr)):
+- `mlflow` is built from `deploy/mlflow/Dockerfile`: the official
+  `ghcr.io/mlflow/mlflow:v<pinned>` image plus `psycopg2-binary`, which the official image
+  lacks for a Postgres backend store.
+- The server runs `mlflow server --backend-store-uri postgresql://…/mlflow --serve-artifacts
+  --artifacts-destination /mlartifacts --host 0.0.0.0 --port 5000`.
+- Backend store: a separate database `mlflow` in the existing Postgres, created by an init
+  script, with its own user. MLflow runs its own migrations on it. The backend's database
+  is never touched by MLflow, and the backend never touches MLflow's tables.
+- Artifacts live in the volume `mlartifacts`. They are served through the MLflow server,
+  so clients never mount the volume.
+- Ports: `127.0.0.1:5000:5000` for the UI; inside the compose network, `http://mlflow:5000`.
+  No auth, the same localhost-only stance as the API (Q2).
+- `depends_on: postgres: service_healthy`; healthcheck `GET /health`.
+- Backup: the README procedure adds `pg_dump mlflow` and a tar of `mlartifacts`.
+- This replaces the `models` volume that 0003 described. The `matcher-train` tools service
+  stays, now with `MLFLOW_TRACKING_URI=http://mlflow:5000` instead of a read-write
+  `models` mount. Once this ADR is accepted, 0003 gets a minor update to match, with your
+  OK.
+
+**Registry conventions:**
+- One registered model, `jobradar-matcher`. Versions are MLflow's integers (`7`).
+- On the wire and in our DB, `model_version` is the string `"7"`.
+- Alias `champion` is the live version. Alias `challenger` (optional) is a version under
+  trial.
+- Each version carries tags, written by `matcher promote`:
+  - `promoted_reason`, `promoted_at`
+  - `gate` = `passed`, `forced`, or absent when the alias was moved by hand in the UI
+
+**What the backend stores** (migration `0004_matching.sql`):
+```sql
+model_versions    (id bigserial PK, version text NOT NULL UNIQUE, mlflow_run_id text NOT NULL,
+                   matcher_version text, metrics jsonb NOT NULL, tags jsonb NOT NULL,
+                   first_seen_at timestamptz NOT NULL)
+model_activations (id bigserial PK, model_version_id → model_versions, previous_id → model_versions,
+                   reason text, gate text, observed_at timestamptz NOT NULL)
+match_results     (id bigserial PK, job_id → jobs, profile_revision_id → profile_revisions,
+                   model_version_id → model_versions, job_content_hash text NOT NULL,
+                   score smallint NOT NULL, band text NOT NULL, confidence text NOT NULL,
+                   completeness real NOT NULL, hard_constraints text NOT NULL,
+                   details jsonb NOT NULL, latency_ms int, created_at,
+                   UNIQUE (job_id, profile_revision_id, model_version_id, job_content_hash))
+```
+- `model_versions` is a local copy of what was seen in MLflow, so results stay traceable
+  even if MLflow data is lost. It is not a second registry: it has no status column.
+- `model_activations` is the audit trail. MLflow does not keep a history of alias moves,
+  so the backend records every change it observes. The timestamp is accurate to the poll
+  interval.
+
+**Following the alias** (`internal/matching`, inside `serve`):
+- Every 60 s and at startup, the backend calls MLflow's REST API: get the version behind
+  alias `champion`, then that version's run metrics and tags. The exact endpoints are
+  checked against the pinned MLflow version.
+- When the version changed: upsert `model_versions`, insert `model_activations` with the
+  `promoted_reason` and `gate` tags, log at `info`, and start a backfill.
+- **MLflow down:** keep using the last observed champion (the latest
+  `model_activations` row), log a warning, and report it in `/readyz` without failing.
+  Matching continues, because the matcher has its own cache (matcher ADR 0004).
+- **No champion yet** (fresh install): matching waits. `/readyz` says "no champion".
+  Bootstrap: `matcher train --from-defaults` followed by `matcher promote 1`.
+
+**Matching loop**, unchanged from the rejected 0007, apart from where the version comes
+from:
+- The pending work is a query: open jobs with no result for (current revision of each
+  profile, champion version, `jobs.content_hash`).
+- Batches of up to 50 go to the matcher with `model_version` set explicitly (accepted
+  [0004](0004-matcher-service-contract.adr)). Results are inserted with
+  `ON CONFLICT DO NOTHING`.
+- New jobs first, then the backfill after a change of champion.
+- Until a job has a result from the champion, the API serves its newest result from any
+  version, marked `model_version` and `stale: true`.
+
+**Rollback**:
+- In the MLflow UI, set `champion` to 6, or run `docker compose run --rm matcher-train
+  promote 6 --reason "v7 drops remote jobs" --force`.
+- Within about a minute, the backend sees it, records it and serves version 6's results,
+  which are still stored, so nothing is recomputed. Results of version 7 are kept for
+  investigation.
+
+**Backend API:**
+- `GET /api/v1/models` lists the versions seen, with their metrics.
+- `GET /api/v1/models/activations` shows the audit trail.
+- There is no activate endpoint: promotion happens in MLflow.
+- `GET /api/v1/labels/export` (accepted [0008](0008-application-tracking.adr)) feeds
+  retraining.
+
+**Consequences.**
+- Good: you get MLflow's UI for comparing runs, its lineage from run to version, and
+  promotion with one click. The backend needs no registry code.
+- Bad: one more container and database. An alias moved by hand in the UI skips the eval
+  check, and the audit row shows `gate` absent. Promotion takes effect up to 60 s late.
+
+## Technologies and alternatives
+- Involved: MLflow server (pinned), its REST API (`net/http` in Go, no MLflow Go client),
+  Postgres, Docker volume.
+- Alternatives:
+  - The backend API as the only activation path, with the MLflow alias as a mirror: a
+    stricter gate, but alias edits in the UI would be silently ignored. You chose the
+    alias.
+  - The backend's own registry (0007): rejected.
+  - SQLite for the MLflow backend store: one less database user, but a separate backup
+    path. Postgres is already there.

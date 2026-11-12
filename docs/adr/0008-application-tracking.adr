@@ -1,6 +1,6 @@
 # 0008. Application tracking: a status per job and profile, with an event log
 
-- Status: Proposed (not approved)
+- Status: Accepted
 - Date: 2026-11-13
 
 An application is a row per (job, profile) with its current status. Every transition is
