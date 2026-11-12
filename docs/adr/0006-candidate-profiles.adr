@@ -1,6 +1,6 @@
 # 0006. Candidate profiles: immutable, schema-validated JSON revisions
 
-- Status: Proposed (not approved)
+- Status: Accepted
 - Date: 2026-11-13
 
 A profile is a named container. Its content is a sequence of immutable revisions, each one

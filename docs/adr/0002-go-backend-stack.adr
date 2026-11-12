@@ -1,6 +1,6 @@
 # 0002. Go backend stack: stdlib HTTP, pgx + sqlc, goose, slog
 
-- Status: Proposed (not approved)
+- Status: Accepted
 - Date: 2026-11-13
 
 The backend uses the standard library for HTTP and logging. Postgres access is pgx with

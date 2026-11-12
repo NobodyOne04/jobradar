@@ -1,6 +1,6 @@
 # 0005. Job ingestion: source adapters, an in-process scheduler, idempotent upserts
 
-- Status: Proposed (not approved)
+- Status: Accepted
 - Date: 2026-11-13
 
 Each job source is a small adapter behind one interface. An in-process scheduler syncs

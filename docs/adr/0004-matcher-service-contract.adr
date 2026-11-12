@@ -1,6 +1,6 @@
 # 0004. Backend ↔ matcher: a stateless matcher over synchronous HTTP batches
 
-- Status: Proposed (not approved)
+- Status: Accepted
 - Date: 2026-11-13
 
 The backend sends batches of jobs and a profile revision to the matcher over HTTP and stores

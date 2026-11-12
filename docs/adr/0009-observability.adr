@@ -1,6 +1,6 @@
 # 0009. Observability: JSON logs with request IDs, a Prometheus-format metrics endpoint
 
-- Status: Proposed (not approved)
+- Status: Accepted
 - Date: 2026-11-13
 
 Both services write structured JSON logs to stdout, sharing one request ID, and each

@@ -1,6 +1,6 @@
 # 0003. Local deployment: one Docker Compose file, always-on, localhost only
 
-- Status: Proposed (not approved)
+- Status: Accepted
 - Date: 2026-11-13
 
 One `compose.yaml` runs Postgres, the migrations, the backend and the matcher on your

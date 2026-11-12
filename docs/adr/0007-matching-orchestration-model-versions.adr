@@ -1,6 +1,7 @@
 # 0007. Matching orchestration, model activation and rollback
 
-- Status: Proposed (not approved)
+- Status: Rejected (2026-11-13): you chose MLflow for model versions, so a hand-rolled registry is
+  out. Replaced by [0010](0010-matching-mlflow-model-lifecycle.adr).
 - Date: 2026-11-13
 
 The backend decides which model version is active and keeps an audit trail of every
