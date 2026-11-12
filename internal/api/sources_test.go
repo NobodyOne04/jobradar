@@ -40,7 +40,7 @@ func sourcesAPI(t *testing.T) (http.Handler, *Sources) {
 		Concurrency: 1, Log: log,
 	}
 	s := &Sources{Queries: store.New(st.Pool), Scheduler: sched, Log: log, Background: context.Background()}
-	return NewHandler(log, readyOK, 5*time.Second, s.Register), s
+	return NewHandler(log, readyOK, 5*time.Second, []string{"example.com"}, s.Register), s
 }
 
 func do(h http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -106,6 +106,9 @@ func TestSourceLifecycle(t *testing.T) {
 		t.Errorf("runs: %s", rec.Body)
 	}
 	assertProblem(t, do(h, "GET", "/api/v1/sources/"+itoa(src.ID)+"/runs?limit=0", ""), 422)
+	if rec = do(h, "GET", "/api/v1/sources/999/runs", ""); rec.Body.String() != "{\"runs\":[]}\n" {
+		t.Errorf("empty runs: %q", rec.Body)
+	}
 
 	rec = do(h, "GET", "/api/v1/sources", "")
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"board_token":"gitlab"`) {

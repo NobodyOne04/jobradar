@@ -33,6 +33,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SYNC_INTERVAL: ${SYNC_INTERVAL:-6h}
       SYNC_CONCURRENCY: ${SYNC_CONCURRENCY:-4}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,::1}
     depends_on:
       postgres:
         condition: service_healthy

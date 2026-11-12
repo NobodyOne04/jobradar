@@ -11,8 +11,9 @@ import (
 // Readiness reports whether a dependency is ready; nil means ready.
 type Readiness func(ctx context.Context) error
 
-// NewHandler builds the router with all middleware applied. register adds resource routes.
-func NewHandler(log *slog.Logger, ready Readiness, timeout time.Duration,
+// NewHandler builds the router with all middleware applied. allowedHosts are the Host
+// names the API answers to (see withLocalOnly); register adds resource routes.
+func NewHandler(log *slog.Logger, ready Readiness, timeout time.Duration, allowedHosts []string,
 	register ...func(*http.ServeMux)) http.Handler {
 	mux := http.NewServeMux()
 	for _, reg := range register {
@@ -34,7 +35,7 @@ func NewHandler(log *slog.Logger, ready Readiness, timeout time.Duration,
 		WriteProblem(w, http.StatusNotFound, "not found", "")
 	})
 
-	return withRequestLog(log, withTimeout(timeout, mux))
+	return withRequestLog(log, withLocalOnly(allowedHosts, withTimeout(timeout, mux)))
 }
 
 // withTimeout gives each request a deadline. Handlers pass r.Context() to the database and

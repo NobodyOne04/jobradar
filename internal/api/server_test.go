@@ -17,7 +17,7 @@ import (
 func handler(ready Readiness) (http.Handler, *bytes.Buffer) {
 	var logs bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&logs, nil))
-	return NewHandler(log, ready, time.Second), &logs
+	return NewHandler(log, ready, time.Second, []string{"example.com"}), &logs // httptest's Host
 }
 
 func get(h http.Handler, path string, header http.Header) *httptest.ResponseRecorder {
@@ -113,5 +113,40 @@ func assertProblem(t *testing.T, rec *httptest.ResponseRecorder, status int) {
 	var p Problem
 	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil || p.Status != status || p.Title == "" {
 		t.Errorf("bad problem body %q: %v", rec.Body, err)
+	}
+}
+
+func TestLocalOnly(t *testing.T) {
+	h := withLocalOnly([]string{"localhost", "127.0.0.1", "::1"},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	for name, tc := range map[string]struct {
+		host, origin string
+		want         int
+	}{
+		"curl to localhost":       {"localhost:8080", "", 204},
+		"curl to 127.0.0.1":       {"127.0.0.1:8080", "", 204},
+		"ipv6 loopback":           {"[::1]:8080", "", 204},
+		"same-origin browser":     {"localhost:8080", "http://localhost:8080", 204},
+		"DNS rebinding":           {"evil.example:8080", "http://evil.example:8080", 403},
+		"rebinding without port":  {"evil.example", "", 403},
+		"cross-site form post":    {"localhost:8080", "https://evil.example", 403},
+		"other local app's port":  {"localhost:8080", "http://localhost:3000", 403},
+		"same host, no port":      {"localhost:8080", "http://localhost", 403},
+		"non-http scheme":         {"localhost:8080", "file://localhost:8080", 403},
+		"same origin, other case": {"LocalHost:8080", "http://localhost:8080", 204},
+		"opaque origin (sandbox)": {"localhost:8080", "null", 403},
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/sources", nil)
+			req.Host = tc.host
+			if tc.origin != "" {
+				req.Header.Set("Origin", tc.origin)
+			}
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			if rec.Code != tc.want {
+				t.Errorf("got %d, want %d", rec.Code, tc.want)
+			}
+		})
 	}
 }

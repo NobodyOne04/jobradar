@@ -56,6 +56,9 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - Errors to clients are problem+json and never carry internal error text (DB errors,
   panics): log the detail with the `request_id`, return a short title.
 - Pass `r.Context()` to every DB/HTTP call: the request deadline relies on it.
+- The API has no auth (localhost only, Q2), so `withLocalOnly` refuses any Host outside
+  `ALLOWED_HOSTS` (DNS rebinding) and any foreign `Origin` (CSRF from the browser). Keep it
+  in front of every route; a new non-local caller needs its host added there.
 - Adapters never guess: no structured field means `unknown`/nil. Reading remote, skills or
   seniority out of free text is the matcher's job (ADR 0005).
 - A new source kind: check its API docs and terms first, record them in the package doc,

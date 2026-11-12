@@ -4,6 +4,8 @@
 
 ### Fixed
 - Syncs could deadlock when as many ran at once as the pool had connections; each sync now uses one connection, and manual syncs share the concurrency limit
+- The API refuses foreign Host headers and cross-site Origins, so web pages in your browser cannot call it (DNS rebinding, CSRF); `ALLOWED_HOSTS` sets the allowed names
+- Empty source and run lists are `[]` instead of `null`
 
 ### Added
 - Project spec and Phase 0 architecture proposal for review
