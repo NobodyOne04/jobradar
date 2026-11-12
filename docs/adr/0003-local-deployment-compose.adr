@@ -19,15 +19,17 @@ and the API stays on localhost without auth (Q1, Q2).
 | `postgres` | `postgres:<major>` (pinned major) | volume `pgdata`; healthcheck `pg_isready`; no published port (opt-in through a git-ignored `compose.override.yaml` for psql) |
 | `migrate` | the backend image, `jobradar migrate up` | `depends_on: postgres: service_healthy`; exits 0 |
 | `backend` | built from `.` (multi-stage: `golang` → `distroless/static`) | `depends_on: migrate: service_completed_successfully, matcher: service_started`; `ports: "127.0.0.1:8080:8080"`; healthcheck `/readyz` (the image has no shell, so the binary has a `healthcheck` subcommand) |
-| `matcher` | built from `${MATCHER_SRC:-../jobradar-matcher}`, tagged `jobradar-matcher:${MATCHER_VERSION}` | not published; volume `models` mounted read-only at `/models`; healthcheck `/readyz` |
+| `matcher` | built from `${MATCHER_SRC:-../jobradar-matcher}`, tagged `jobradar-matcher:${MATCHER_VERSION}` | not published; `MLFLOW_TRACKING_URI=http://mlflow:5000`; volume `matcher-cache` at `/cache`; healthcheck `/readyz` |
+| `mlflow` | built from `deploy/mlflow/Dockerfile` | `127.0.0.1:5000`; database `mlflow` in `postgres`; volume `mlartifacts`; details in [0010](0010-matching-mlflow-model-lifecycle.adr) |
 
 - The backend does **not** wait for the matcher to be healthy. If the matcher is down,
   matching pauses and ingestion keeps going (see
   [0004](0004-matcher-service-contract.adr)).
 - `restart: unless-stopped` on `postgres`, `backend` and `matcher`, so the always-on
   machine recovers from reboots and crashes.
-- Volumes: `pgdata` and `models`. Both are covered by the backup procedure in the README
-  (`pg_dump` plus a tar of `models`).
+- Volumes: `pgdata`, `mlartifacts` and `matcher-cache`. The backup procedure in the README
+  covers `pgdata` and `mlartifacts` (`pg_dump` of both databases plus a tar of
+  `mlartifacts`). `matcher-cache` is a cache, rebuilt from MLflow.
 
 **Configuration.**
 - `.env.example` lists every variable with a safe default or a placeholder:
@@ -45,7 +47,8 @@ and the API stays on localhost without auth (Q1, Q2).
 
 **Retraining** runs as a one-off command: `docker compose run --rm matcher-train …`.
 `matcher-train` is the matcher image under the `tools` profile (so `up` never starts it). It
-is the only service that mounts `models` read-write, and it mounts `./labels` read-only at
+talks to MLflow (`MLFLOW_TRACKING_URI`) instead of mounting a model volume, and it mounts
+`./labels` read-only at
 `/in` (see [0007](0007-matching-orchestration-model-versions.adr)).
 
 ## Technologies and alternatives

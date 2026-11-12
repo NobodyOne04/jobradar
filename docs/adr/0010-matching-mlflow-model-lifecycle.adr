@@ -1,6 +1,6 @@
 # 0010. Matching orchestration with MLflow: the `champion` alias decides the live model
 
-- Status: Proposed (not approved)
+- Status: Accepted
 - Date: 2026-11-13
 
 MLflow runs locally and holds every model version with its training run, metrics and
@@ -36,10 +36,9 @@ side (training, registration, loading) is in `jobradar-matcher` ADR 0004.
   No auth, the same localhost-only stance as the API (Q2).
 - `depends_on: postgres: service_healthy`; healthcheck `GET /health`.
 - Backup: the README procedure adds `pg_dump mlflow` and a tar of `mlartifacts`.
-- This replaces the `models` volume that 0003 described. The `matcher-train` tools service
-  stays, now with `MLFLOW_TRACKING_URI=http://mlflow:5000` instead of a read-write
-  `models` mount. Once this ADR is accepted, 0003 gets a minor update to match, with your
-  OK.
+- This replaces the `models` volume that 0003 first described. 0003 has been updated to
+  match: `matcher-train` uses `MLFLOW_TRACKING_URI=http://mlflow:5000` instead of a
+  read-write `models` mount.
 
 **Registry conventions:**
 - One registered model, `jobradar-matcher`. Versions are MLflow's integers (`7`).

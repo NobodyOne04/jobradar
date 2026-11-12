@@ -15,4 +15,4 @@ Matcher-internal decisions live in `jobradar-matcher/docs/adr/`.
 | [0007](0007-matching-orchestration-model-versions.adr) | Matching orchestration, model activation and rollback | Rejected (MLflow instead, see 0010) |
 | [0008](0008-application-tracking.adr) | Application tracking: a status per job and profile, with an event log | Accepted |
 | [0009](0009-observability.adr) | Observability: JSON logs with request IDs, Prometheus-format metrics | Accepted |
-| [0010](0010-matching-mlflow-model-lifecycle.adr) | Matching orchestration with MLflow: the `champion` alias decides the live model | Proposed |
+| [0010](0010-matching-mlflow-model-lifecycle.adr) | Matching orchestration with MLflow: the `champion` alias decides the live model | Accepted |
