@@ -39,7 +39,7 @@ and the API stays on localhost without auth (Q1, Q2).
 - Secrets reach the containers only through the environment.
 
 **Startup**, documented in the README:
-1. Clone both repos side by side and check out the pinned matcher tag (see
+1. Clone both repos side by side and check out the pinned matcher commit (see
    [0001](0001-two-repos-pinned-matcher.adr)).
 2. `cp .env.example .env` and set the passwords and token.
 3. `docker compose up -d --build`.
