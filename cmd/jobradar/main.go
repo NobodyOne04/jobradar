@@ -19,6 +19,7 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/config"
 	"github.com/NobodyOne04/jobradar/internal/ingest"
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
+	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
 
@@ -98,7 +99,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	scheduler := &ingest.Scheduler{
 		Syncer: &ingest.Syncer{
 			Pool:     st.Pool,
-			Adapters: ingest.NewRegistry(greenhouse.New(httpClient)),
+			Adapters: ingest.NewRegistry(greenhouse.New(httpClient), lever.New(httpClient)),
 			Log:      log,
 		},
 		Interval:    cfg.SyncInterval,
