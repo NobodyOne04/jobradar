@@ -18,6 +18,7 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/api"
 	"github.com/NobodyOne04/jobradar/internal/config"
 	"github.com/NobodyOne04/jobradar/internal/ingest"
+	"github.com/NobodyOne04/jobradar/internal/ingest/ashby"
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
 	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
 	"github.com/NobodyOne04/jobradar/internal/store"
@@ -98,9 +99,10 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	httpClient := ingest.NewHTTPClient(2) // per source kind: at most 2 requests a second
 	scheduler := &ingest.Scheduler{
 		Syncer: &ingest.Syncer{
-			Pool:     st.Pool,
-			Adapters: ingest.NewRegistry(greenhouse.New(httpClient), lever.New(httpClient)),
-			Log:      log,
+			Pool: st.Pool,
+			Adapters: ingest.NewRegistry(greenhouse.New(httpClient), lever.New(httpClient),
+				ashby.New(httpClient)),
+			Log: log,
 		},
 		Interval:    cfg.SyncInterval,
 		Concurrency: cfg.SyncConcurrency,

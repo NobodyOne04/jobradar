@@ -31,7 +31,7 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/ingest/`: `Adapter` interface and `Registry`, `Syncer` (one source: fetch,
   upsert per posting in a tx, close missing), `Scheduler` (due sources, advisory lock),
   `HTTPClient` (rate limit, retries), normalization and dedup keys; one subpackage per
-  source (`greenhouse/`, `lever/`), each with recorded `testdata/` and its API terms in the
+  source (`greenhouse/`, `lever/`, `ashby/`), each with recorded `testdata/` and its API terms in the
   package doc
 - `internal/testdb/`: throwaway migrated Postgres for tests
 - `compose.yaml`: postgres, migrate (one-shot), backend, matcher (built from

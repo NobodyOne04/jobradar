@@ -8,6 +8,7 @@
 - Empty source and run lists are `[]` instead of `null`
 
 ### Added
+- Ashby adapter: salary from the compensation summary, workplace and employment type, all locations; unlisted postings skipped
 - Lever adapter: paged fetch, EU sites via `{"region":"eu"}`, salary, workplace type, country, posting date; requirement lists kept in the description
 - Project spec and Phase 0 architecture proposal for review
 - ADRs 0001–0009 (Proposed): repos, Go stack, compose, matcher contract, ingestion, profiles, model versions, applications, observability

@@ -47,6 +47,7 @@ syncs it every `SYNC_INTERVAL` (6h). Supported so far:
 |---|---|---|
 | `greenhouse` | the `{board}` in `boards.greenhouse.io/{board}` | none |
 | `lever` | the `{site}` in `jobs.lever.co/{site}` | `{"region":"eu"}` for `jobs.eu.lever.co` sites |
+| `ashby` | the `{board}` in `jobs.ashbyhq.com/{board}` (case matters) | none |
 
 ```sh
 curl -X POST localhost:8080/api/v1/sources \

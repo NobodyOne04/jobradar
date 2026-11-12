@@ -1,0 +1,412 @@
+{
+ "apiVersion": "1",
+ "jobs": [
+  {
+   "id": "7458d4e9-da2e-47bd-98cb-adfda43d42b2",
+   "title": "Engineering Manager - EU",
+   "department": "Engineering",
+   "team": "EMEA Engineering",
+   "employmentType": "FullTime",
+   "location": "Remote - European Union",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [
+    {
+     "location": "Spain",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Spain",
+       "addressCountry": "Spain",
+       "addressLocality": "Spain"
+      }
+     }
+    },
+    {
+     "location": "Italy",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "",
+       "addressCountry": "Italy",
+       "addressLocality": ""
+      }
+     }
+    },
+    {
+     "location": "Germany",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Germany",
+       "addressLocality": ""
+      }
+     }
+    }
+   ],
+   "publishedAt": "2024-03-04T14:29:08.532+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "postalCode": "",
+     "addressRegion": "",
+     "addressCountry": "European Union",
+     "addressLocality": ""
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2",
+   "applyUrl": "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\">Hi \ud83d\udc4b I\u2019m <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://uk.linkedin.com/in/colinhoweuk\"><u>Colin</u></a>, Director of Engineering, Europe. How do you feel about software engineers writing product specs, making product decisions, and not breaking down projects into individual tickets? If that sounds exciting (even if a bit scary), read on because I\u2019m looking for an engineering manager to help us build a different type of engineering team and cultur",
+   "descriptionPlain": "Hi \ud83d\udc4b I\u2019m Colin https://uk.linkedin.com/in/colinhoweuk, Director of Engineering, Europe. How do you feel about software engineers writing product specs, making product decisions, and not breaking down projects into individual tickets? If that sounds exciting (even if a bit scary), read on because I\u2019m",
+   "compensation": {
+    "compensationTierSummary": "\u20ac150K \u2013 \u20ac250K \u2022 Offers Equity \u2022 Offers Bonus",
+    "scrapeableCompensationSalarySummary": "\u20ac150K - \u20ac250K",
+    "compensationTiers": [
+     {
+      "id": "f1284fac-20e9-4ed0-9a10-776d526a636c",
+      "tierSummary": "\u20ac150K \u2013 \u20ac250K \u2022 Offers Equity \u2022 Offers Bonus",
+      "title": "EU",
+      "additionalInformation": null,
+      "components": [
+       {
+        "id": "04679796-e0e4-4d9b-a5c0-0cad3ff8ae95",
+        "summary": "Offers Bonus",
+        "compensationType": "Bonus",
+        "interval": "1 YEAR",
+        "currencyCode": "EUR",
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "da741ab6-ff38-4fc2-b7b7-c1ccd7260347",
+        "summary": "Offers Equity",
+        "compensationType": "EquityPercentage",
+        "interval": "NONE",
+        "currencyCode": null,
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "201b8495-aa7c-417d-923b-94fced49b246",
+        "summary": "\u20ac150K \u2013 \u20ac250K",
+        "compensationType": "Salary",
+        "interval": "1 YEAR",
+        "currencyCode": "EUR",
+        "minValue": 150000,
+        "maxValue": 250000
+       }
+      ]
+     }
+    ],
+    "summaryComponents": [
+     {
+      "compensationType": "Bonus",
+      "interval": "1 YEAR",
+      "currencyCode": "EUR",
+      "minValue": null,
+      "maxValue": null
+     },
+     {
+      "compensationType": "EquityPercentage",
+      "interval": "NONE",
+      "currencyCode": null,
+      "minValue": null,
+      "maxValue": null
+     },
+     {
+      "compensationType": "Salary",
+      "interval": "1 YEAR",
+      "currencyCode": "EUR",
+      "minValue": 150000,
+      "maxValue": 250000
+     }
+    ]
+   }
+  },
+  {
+   "id": "86a60834-ba64-484d-9658-afa1bc97a957",
+   "title": "Mid Market Account Executive - EMEA (French Speaking)",
+   "department": "Sales",
+   "team": "Sales",
+   "employmentType": "FullTime",
+   "location": "France",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [
+    {
+     "location": "United Kingdom",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "",
+       "addressCountry": "United Kingdom",
+       "addressLocality": ""
+      }
+     }
+    },
+    {
+     "location": "Belgium",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "",
+       "addressCountry": "Belgium",
+       "addressLocality": ""
+      }
+     }
+    },
+    {
+     "location": "Germany",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Germany",
+       "addressLocality": ""
+      }
+     }
+    }
+   ],
+   "publishedAt": "2026-09-08T16:27:26.694+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "",
+     "addressCountry": "France",
+     "addressLocality": ""
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/Ashby/86a60834-ba64-484d-9658-afa1bc97a957",
+   "applyUrl": "https://jobs.ashbyhq.com/Ashby/86a60834-ba64-484d-9658-afa1bc97a957/application",
+   "descriptionHtml": "<h2><strong>Why Join Sales at Ashby</strong></h2><p style=\"min-height:1.5em\">Sales at Ashby is a unique opportunity to sell a <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://www.ashbyhq.com/customers\"><u>product customers genuinely love</u></a> during an AI-fueled market expansion. Over 5,000 companies rely on Ashby, including OpenAI, Doctolib, Alan, Mistral and <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"http://Monday.com\">Monday.com</a>, and our business is ",
+   "descriptionPlain": "WHY JOIN SALES AT ASHBY\n\nSales at Ashby is a unique opportunity to sell a product customers genuinely love https://www.ashbyhq.com/customers during an AI-fueled market expansion. Over 5,000 companies rely on Ashby, including OpenAI, Doctolib, Alan, Mistral and Monday.com http://Monday.com, and our b",
+   "compensation": {
+    "compensationTierSummary": "\u20ac110K \u2013 \u20ac195.5K \u2022 Offers Equity \u2022 Offers Commission \u2022 Multiple Ranges",
+    "scrapeableCompensationSalarySummary": "\u20ac110K - \u20ac195.5K",
+    "compensationTiers": [
+     {
+      "id": "578bf152-5d8a-48d4-8fc5-658664165b71",
+      "tierSummary": "OTE \u20ac144.5K \u2013 \u20ac195.5K \u2022 Offers Equity \u2022 Offers Commission",
+      "title": "EMEA Tier 1 - Remote",
+      "additionalInformation": null,
+      "components": [
+       {
+        "id": "3376fe86-7d18-47ef-acf7-0da9f67d78bc",
+        "summary": "Offers Equity",
+        "compensationType": "EquityPercentage",
+        "interval": "NONE",
+        "currencyCode": null,
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "659f2f29-2e52-4d0c-8b4c-51727268a659",
+        "summary": "Offers Commission",
+        "compensationType": "Commission",
+        "interval": "1 YEAR",
+        "currencyCode": "EUR",
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "5b09c7b6-efde-4f66-85f6-ecb6cfe29980",
+        "summary": "OTE \u20ac144.5K \u2013 \u20ac195.5K",
+        "compensationType": "Salary",
+        "interval": "1 YEAR",
+        "currencyCode": "EUR",
+        "minValue": 144500,
+        "maxValue": 195500
+       }
+      ]
+     },
+     {
+      "id": "dd41799a-43df-449c-ac68-fd6044ced3d3",
+      "tierSummary": "OTE \u20ac127.5K \u2013 \u20ac172.5K \u2022 Offers Equity \u2022 Offers Commission",
+      "title": "EMEA Tier 2 - Remote",
+      "additionalInformation": null,
+      "components": [
+       {
+        "id": "a7d5af1a-2692-4e9d-96f4-4e5267dab1a0",
+        "summary": "Offers Commission",
+        "compensationType": "Commission",
+        "interval": "1 YEAR",
+        "currencyCode": "EUR",
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "77245e6e-9a5c-4511-8667-13b4e072944e",
+        "summary": "Offers Equity",
+        "compensationType": "EquityPercentage",
+        "interval": "NONE",
+        "currencyCode": null,
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "47ae4a45-026a-45b9-b857-96fbc74a28b6",
+        "summary": "OTE \u20ac127.5K \u2013 \u20ac172.5K",
+        "compensationType": "Salary",
+        "interval": "1 YEAR",
+        "currencyCode": "EUR",
+        "minValue": 127500,
+        "maxValue": 172500
+       }
+      ]
+     }
+    ],
+    "summaryComponents": [
+     {
+      "compensationType": "EquityPercentage",
+      "minValue": null,
+      "maxValue": null,
+      "interval": "1 YEAR"
+     },
+     {
+      "compensationType": "Commission",
+      "minValue": null,
+      "maxValue": null,
+      "interval": "1 YEAR"
+     },
+     {
+      "minValue": 110000,
+      "maxValue": 195500,
+      "currencyCode": "EUR",
+      "interval": "1 YEAR",
+      "compensationType": "Salary"
+     }
+    ]
+   }
+  },
+  {
+   "id": "00000000-0000-0000-0000-000000000999",
+   "title": "Bare Fields Engineer",
+   "department": "Engineering",
+   "team": "EMEA Engineering",
+   "location": "Somewhere",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [],
+   "isListed": true,
+   "isRemote": true,
+   "jobUrl": "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2",
+   "applyUrl": "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\">Hi \ud83d\udc4b I\u2019m <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://uk.linkedin.com/in/colinhoweuk\"><u>Colin</u></a>, Director of Engineering, Europe. How do you feel about software engineers writing product specs, making product decisions, and not breaking down projects into individual tickets? If that sounds exciting (even if a bit scary), read on because I\u2019m looking for an engineering manager to help us build a different type of engineering team and cultur",
+   "descriptionPlain": "Hi \ud83d\udc4b I\u2019m Colin https://uk.linkedin.com/in/colinhoweuk, Director of Engineering, Europe. How do you feel about software engineers writing product specs, making product decisions, and not breaking down projects into individual tickets? If that sounds exciting (even if a bit scary), read on because I\u2019m"
+  },
+  {
+   "id": "00000000-0000-0000-0000-000000000998",
+   "title": "Unlisted Role",
+   "department": "Engineering",
+   "team": "EMEA Engineering",
+   "employmentType": "FullTime",
+   "location": "Remote - European Union",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [
+    {
+     "location": "Spain",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "Spain",
+       "addressCountry": "Spain",
+       "addressLocality": "Spain"
+      }
+     }
+    },
+    {
+     "location": "Italy",
+     "address": {
+      "postalAddress": {
+       "addressRegion": "",
+       "addressCountry": "Italy",
+       "addressLocality": ""
+      }
+     }
+    },
+    {
+     "location": "Germany",
+     "address": {
+      "postalAddress": {
+       "addressCountry": "Germany",
+       "addressLocality": ""
+      }
+     }
+    }
+   ],
+   "publishedAt": "2024-03-04T14:29:08.532+00:00",
+   "isListed": false,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "postalCode": "",
+     "addressRegion": "",
+     "addressCountry": "European Union",
+     "addressLocality": ""
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2",
+   "applyUrl": "https://jobs.ashbyhq.com/Ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\">Hi \ud83d\udc4b I\u2019m <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://uk.linkedin.com/in/colinhoweuk\"><u>Colin</u></a>, Director of Engineering, Europe. How do you feel about software engineers writing product specs, making product decisions, and not breaking down projects into individual tickets? If that sounds exciting (even if a bit scary), read on because I\u2019m looking for an engineering manager to help us build a different type of engineering team and cultur",
+   "descriptionPlain": "Hi \ud83d\udc4b I\u2019m Colin https://uk.linkedin.com/in/colinhoweuk, Director of Engineering, Europe. How do you feel about software engineers writing product specs, making product decisions, and not breaking down projects into individual tickets? If that sounds exciting (even if a bit scary), read on because I\u2019m",
+   "compensation": {
+    "compensationTierSummary": "\u20ac150K \u2013 \u20ac250K \u2022 Offers Equity \u2022 Offers Bonus",
+    "scrapeableCompensationSalarySummary": "\u20ac150K - \u20ac250K",
+    "compensationTiers": [
+     {
+      "id": "f1284fac-20e9-4ed0-9a10-776d526a636c",
+      "tierSummary": "\u20ac150K \u2013 \u20ac250K \u2022 Offers Equity \u2022 Offers Bonus",
+      "title": "EU",
+      "additionalInformation": null,
+      "components": [
+       {
+        "id": "04679796-e0e4-4d9b-a5c0-0cad3ff8ae95",
+        "summary": "Offers Bonus",
+        "compensationType": "Bonus",
+        "interval": "1 YEAR",
+        "currencyCode": "EUR",
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "da741ab6-ff38-4fc2-b7b7-c1ccd7260347",
+        "summary": "Offers Equity",
+        "compensationType": "EquityPercentage",
+        "interval": "NONE",
+        "currencyCode": null,
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "201b8495-aa7c-417d-923b-94fced49b246",
+        "summary": "\u20ac150K \u2013 \u20ac250K",
+        "compensationType": "Salary",
+        "interval": "1 YEAR",
+        "currencyCode": "EUR",
+        "minValue": 150000,
+        "maxValue": 250000
+       }
+      ]
+     }
+    ],
+    "summaryComponents": [
+     {
+      "compensationType": "Bonus",
+      "interval": "1 YEAR",
+      "currencyCode": "EUR",
+      "minValue": null,
+      "maxValue": null
+     },
+     {
+      "compensationType": "EquityPercentage",
+      "interval": "NONE",
+      "currencyCode": null,
+      "minValue": null,
+      "maxValue": null
+     },
+     {
+      "compensationType": "Salary",
+      "interval": "1 YEAR",
+      "currencyCode": "EUR",
+      "minValue": 150000,
+      "maxValue": 250000
+     }
+    ]
+   }
+  }
+ ]
+}
