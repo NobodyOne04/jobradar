@@ -1,0 +1,57 @@
+# 0003. Local deployment: one Docker Compose file, always-on, localhost only
+
+- Status: Proposed (not approved)
+- Date: 2026-11-13
+
+One `compose.yaml` runs Postgres, the migrations, the backend and the matcher on your
+always-on machine. Only the backend API is published, and only on localhost.
+
+## Technical details
+
+**Problem.** SPEC §11 asks for a local Docker Compose deployment with health checks,
+migrations, persistent storage and an `.env` example. It runs on an always-on local machine,
+and the API stays on localhost without auth (Q1, Q2).
+
+**Services in `compose.yaml`:**
+
+| Service | Image | Notes |
+|---|---|---|
+| `postgres` | `postgres:<major>` (pinned major) | volume `pgdata`; healthcheck `pg_isready`; no published port (opt-in through a git-ignored `compose.override.yaml` for psql) |
+| `migrate` | the backend image, `jobradar migrate up` | `depends_on: postgres: service_healthy`; exits 0 |
+| `backend` | built from `.` (multi-stage: `golang` → `distroless/static`) | `depends_on: migrate: service_completed_successfully, matcher: service_started`; `ports: "127.0.0.1:8080:8080"`; healthcheck `/readyz` (the image has no shell, so the binary has a `healthcheck` subcommand) |
+| `matcher` | built from `${MATCHER_SRC:-../jobradar-matcher}`, tagged `jobradar-matcher:${MATCHER_VERSION}` | not published; volume `models` mounted read-only at `/models`; healthcheck `/readyz` |
+
+- The backend does **not** wait for the matcher to be healthy. If the matcher is down,
+  matching pauses and ingestion keeps going (see
+  [0004](0004-matcher-service-contract.adr)).
+- `restart: unless-stopped` on `postgres`, `backend` and `matcher`, so the always-on
+  machine recovers from reboots and crashes.
+- Volumes: `pgdata` and `models`. Both are covered by the backup procedure in the README
+  (`pg_dump` plus a tar of `models`).
+
+**Configuration.**
+- `.env.example` lists every variable with a safe default or a placeholder:
+  `POSTGRES_PASSWORD`, `DATABASE_URL`, `MATCHER_URL`, `MATCHER_TOKEN`, `MATCHER_VERSION`,
+  `MATCHER_SRC`, `LOG_LEVEL`.
+- `.env` is git-ignored.
+- Secrets reach the containers only through the environment.
+
+**Startup**, documented in the README:
+1. Clone both repos side by side and check out the pinned matcher tag (see
+   [0001](0001-two-repos-pinned-matcher.adr)).
+2. `cp .env.example .env` and set the passwords and token.
+3. `docker compose up -d --build`.
+4. `curl localhost:8080/readyz`.
+
+**Retraining** runs as a one-off command: `docker compose run --rm matcher-train …`.
+`matcher-train` is the matcher image under the `tools` profile (so `up` never starts it). It
+is the only service that mounts `models` read-write, and it mounts `./labels` read-only at
+`/in` (see [0007](0007-matching-orchestration-model-versions.adr)).
+
+## Technologies and alternatives
+- Involved: Docker Compose v2 spec (Compose v5.5 installed), BuildKit, distroless base image.
+- Alternatives:
+  - Running migrations inside `serve` at startup: simpler, but it couples deploys with
+    schema changes and races if two instances start.
+  - Kubernetes / k3s: no requirement for it (SPEC §13).
+  - systemd units without Docker: SPEC asks for Docker.

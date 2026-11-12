@@ -1,7 +1,8 @@
 # JobRadar: Phase 0 architecture proposal
 
-**Status:** Proposed. Nothing in this document is approved yet. Once you approve a decision,
-it becomes an ADR in `docs/adr/`. No code gets written before that (SPEC §14).
+**Status:** Proposal, merged for reference. The decisions are drafted as ADRs (`docs/adr/` here
+and in `jobradar-matcher`), each Proposed until you approve it. The ADRs are authoritative where
+they are more detailed or differ. No code gets written before approval (SPEC §14).
 **Date:** 2026-11-13. Revision 2: your answers to Q1–Q5, two repos, model versioning (§5.1).
 Revision 3: repo names confirmed; no registry, the matcher image is built locally (Q7).
 

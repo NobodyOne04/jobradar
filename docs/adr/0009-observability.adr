@@ -1,0 +1,65 @@
+# 0009. Observability: JSON logs with request IDs, a Prometheus-format metrics endpoint
+
+- Status: Proposed (not approved)
+- Date: 2026-11-13
+
+Both services write structured JSON logs to stdout, sharing one request ID, and each
+exposes counters and histograms at `/metrics`. No monitoring stack is deployed until there
+is a reason to.
+
+## Technical details
+
+**Problem.** SPEC §10 asks for structured logs, request correlation, service health,
+processing and ingestion statistics, matching latency, and error monitoring. SPEC §13 asks
+to avoid infrastructure without a demonstrated need.
+
+**Logs.**
+- Go uses `log/slog` with the JSON handler. Python uses `structlog`, rendering JSON.
+- Both write to stdout, read with `docker compose logs`. The level is set by `LOG_LEVEL`.
+- Common fields: `ts`, `level`, `service`, `msg`, `request_id`, plus the event's own
+  fields (`source_id`, `sync_run_id`, `model_version`, `batch_size`, `duration_ms`).
+- Never logged: profile content, CV text, salary expectations, `MATCHER_TOKEN`. Ids only.
+  A test checks that a profile fixture's distinctive strings never appear in captured
+  logs.
+
+**Correlation.**
+- The backend takes `X-Request-ID` from the client or generates a UUIDv7, puts it in the
+  context and the logger, and returns it in the response.
+- It sends the same ID to the matcher. Background work (syncs, matching batches) gets its
+  own generated ID, linked by `sync_run_id`.
+
+**Health.**
+- `/healthz` means the process is alive.
+- `/readyz` checks dependencies:
+  - backend: database reachable, schema at the latest migration; reports the matcher's
+    state without failing on it
+  - matcher: embedding model and bundles loaded
+- Compose health checks use `/readyz`.
+
+**Metrics** (`/metrics`, Prometheus text format):
+- Backend:
+  - `jobradar_http_requests_total{route,code}`
+  - `jobradar_http_request_duration_seconds`
+  - `jobradar_sync_runs_total{kind,status}`
+  - `jobradar_postings_total{kind,result=created|updated|unchanged|closed}`
+  - `jobradar_matching_pending_jobs`
+  - `jobradar_match_batch_duration_seconds`
+  - `jobradar_matcher_errors_total{reason}`
+- Matcher: `matcher_match_duration_seconds{model_version}` and
+  `matcher_requests_total{code}`.
+- The backend's `/metrics` is on the localhost port. The matcher's stays inside the compose
+  network.
+
+**Error monitoring.** Errors are logged at `error` level with a stable `error_kind` field.
+`GET /api/v1/sources/{id}/runs` and the metrics show failures. No external error tracker.
+
+**Later, not now:** Prometheus and Grafana containers, OpenTelemetry tracing. Either can be
+added without changing the code above, because the metrics are already in Prometheus format
+and the request IDs are already propagated.
+
+## Technologies and alternatives
+- Involved: log/slog, prometheus/client_golang, structlog, prometheus-client (Python).
+- Alternatives:
+  - OpenTelemetry SDK plus a collector from day one: tracing two services that make one
+    call is more setup than insight.
+  - Sentry: an external service holding error context that may include personal data.
