@@ -11,11 +11,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/NobodyOne04/jobradar/internal/api"
 	"github.com/NobodyOne04/jobradar/internal/config"
+	"github.com/NobodyOne04/jobradar/internal/ingest"
+	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
 
@@ -81,9 +84,35 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 		return nil
 	}
 
+	queries := store.New(st.Pool)
+	// shortcut: assumes one backend process; with several, a live peer's runs would be
+	// marked failed too. Upgrade by recording the owning process on each run.
+	if n, err := queries.FailInterruptedRuns(ctx); err != nil {
+		log.Warn("could not close interrupted sync runs", "error", err)
+	} else if n > 0 {
+		log.Info("closed interrupted sync runs", "count", n)
+	}
+
+	httpClient := ingest.NewHTTPClient(2) // per source kind: at most 2 requests a second
+	scheduler := &ingest.Scheduler{
+		Syncer: &ingest.Syncer{
+			Pool:     st.Pool,
+			Adapters: ingest.NewRegistry(greenhouse.New(httpClient)),
+			Log:      log,
+		},
+		Interval:    cfg.SyncInterval,
+		Concurrency: cfg.SyncConcurrency,
+		Tick:        time.Minute,
+		Log:         log,
+	}
+	sources := &api.Sources{Queries: queries, Scheduler: scheduler, Log: log, Background: ctx}
+
+	var background sync.WaitGroup
+	background.Go(func() { scheduler.Run(ctx) })
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           api.NewHandler(log, ready, cfg.RequestTimeout),
+		Handler:           api.NewHandler(log, ready, cfg.RequestTimeout, sources.Register),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      cfg.RequestTimeout + 5*time.Second, // backstop behind the per-request deadline
 	}
@@ -99,7 +128,11 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	log.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+	err := srv.Shutdown(shutdownCtx)
+	// ctx is cancelled: running syncs stop at the next posting and record themselves failed.
+	background.Wait()
+	sources.Wait()
+	return err
 }
 
 func migrate(ctx context.Context, log *slog.Logger, st *store.Store, cmd string) error {

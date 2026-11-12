@@ -38,6 +38,20 @@ curl localhost:8080/readyz  # {"status":"ready"}
 `docker compose ps` shows health. Containers restart on their own after a reboot or a crash.
 The database passwords in `.env` are applied only when the `pgdata` volume is first created.
 
+## Add job sources
+
+Sources are rows, not code: add a company's board through the API, and the scheduler
+syncs it every `SYNC_INTERVAL` (6h). Supported so far: `greenhouse` (the token is the
+`{board}` in `boards.greenhouse.io/{board}`).
+
+```sh
+curl -X POST localhost:8080/api/v1/sources \
+  -d '{"kind":"greenhouse","board_token":"gitlab","display_name":"GitLab"}'
+curl -X POST localhost:8080/api/v1/sources/1/sync        # sync now instead of waiting
+curl localhost:8080/api/v1/sources/1/runs                # outcome: fetched, created, closed, ...
+curl -X PATCH localhost:8080/api/v1/sources/1 -d '{"enabled":false}'
+```
+
 ## Back up and restore
 
 Everything that matters is in two volumes: `pgdata` (the `jobradar` and `mlflow` databases)
