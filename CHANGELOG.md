@@ -9,6 +9,7 @@
 - Git-ignore real profiles, exported labels and compose overrides
 - Go backend skeleton: `jobradar serve` (`/healthz`, `/readyz` with schema check) and `migrate up|down|status`, env config, JSON logs with request IDs, problem+json errors, goose migrations, CI
 - Local deployment: `compose.yaml` with Postgres 18, migrations, backend, matcher and MLflow 3.18, health checks, `jobradar healthcheck`, backup and restore in the README
+- Job ingestion: sources API, scheduled and manual syncs with retries and rate limits, idempotent upserts, closing of vanished postings, cross-source dedup, Greenhouse adapter
 
 ### Changed
 - ADR 0010: MLflow UI on host port 5001, psycopg 3, `--allowed-hosts` (as built in the compose PR)

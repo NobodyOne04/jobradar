@@ -11,9 +11,13 @@ import (
 // Readiness reports whether a dependency is ready; nil means ready.
 type Readiness func(ctx context.Context) error
 
-// NewHandler builds the router with all middleware applied.
-func NewHandler(log *slog.Logger, ready Readiness, timeout time.Duration) http.Handler {
+// NewHandler builds the router with all middleware applied. register adds resource routes.
+func NewHandler(log *slog.Logger, ready Readiness, timeout time.Duration,
+	register ...func(*http.ServeMux)) http.Handler {
 	mux := http.NewServeMux()
+	for _, reg := range register {
+		reg(mux)
+	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})

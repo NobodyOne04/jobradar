@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,6 +18,8 @@ type Config struct {
 	LogLevel        slog.Level    // LOG_LEVEL: debug|info|warn|error, default info
 	RequestTimeout  time.Duration // REQUEST_TIMEOUT, default 30s
 	ShutdownTimeout time.Duration // SHUTDOWN_TIMEOUT, default 10s
+	SyncInterval    time.Duration // SYNC_INTERVAL: how old a source's last good sync may get, default 6h
+	SyncConcurrency int           // SYNC_CONCURRENCY: sources synced at once, default 4
 }
 
 // FromEnv reads the environment and returns every invalid setting at once.
@@ -46,6 +49,12 @@ func parse(getenv func(string) string) (Config, error) {
 		HTTPAddr:        get("HTTP_ADDR", ":8080"),
 		RequestTimeout:  duration("REQUEST_TIMEOUT", "30s"),
 		ShutdownTimeout: duration("SHUTDOWN_TIMEOUT", "10s"),
+		SyncInterval:    duration("SYNC_INTERVAL", "6h"),
+	}
+	if n, err := strconv.Atoi(get("SYNC_CONCURRENCY", "4")); err != nil || n < 1 || n > 32 {
+		errs = append(errs, fmt.Errorf("SYNC_CONCURRENCY must be 1-32, got %q", get("SYNC_CONCURRENCY", "4")))
+	} else {
+		c.SyncConcurrency = n
 	}
 	if c.DatabaseURL == "" {
 		errs = append(errs, errors.New("DATABASE_URL must be set"))

@@ -1,38 +1,18 @@
-package store
+package store_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/NobodyOne04/jobradar/internal/store"
+	"github.com/NobodyOne04/jobradar/internal/testdb"
 )
-
-// startPostgres runs a throwaway Postgres; skipped when Docker is not available.
-func startPostgres(t *testing.T) string {
-	t.Helper()
-	testcontainers.SkipIfProviderIsNotHealthy(t)
-	ctx := context.Background()
-	pg, err := postgres.Run(ctx, "postgres:18-alpine",
-		postgres.WithDatabase("jobradar"),
-		postgres.BasicWaitStrategies(),
-	)
-	testcontainers.CleanupContainer(t, pg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	url, err := pg.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return url
-}
 
 func TestMigrationsUpDownStatus(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	st, err := Open(ctx, startPostgres(t))
+	st, err := store.Open(ctx, testdb.URL(t))
 	if err != nil {
 		t.Fatal(err)
 	}
