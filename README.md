@@ -41,8 +41,12 @@ The database passwords in `.env` are applied only when the `pgdata` volume is fi
 ## Add job sources
 
 Sources are rows, not code: add a company's board through the API, and the scheduler
-syncs it every `SYNC_INTERVAL` (6h). Supported so far: `greenhouse` (the token is the
-`{board}` in `boards.greenhouse.io/{board}`).
+syncs it every `SYNC_INTERVAL` (6h). Supported so far:
+
+| kind | board_token | config |
+|---|---|---|
+| `greenhouse` | the `{board}` in `boards.greenhouse.io/{board}` | none |
+| `lever` | the `{site}` in `jobs.lever.co/{site}` | `{"region":"eu"}` for `jobs.eu.lever.co` sites |
 
 ```sh
 curl -X POST localhost:8080/api/v1/sources \

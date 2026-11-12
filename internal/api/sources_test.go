@@ -57,7 +57,7 @@ func TestCreateSourceValidation(t *testing.T) {
 		status int
 	}{
 		"unsupported kind": {`{"kind":"monster","board_token":"x"}`, 422},
-		"not yet built":    {`{"kind":"lever","board_token":"x"}`, 422},
+		"not yet built":    {`{"kind":"ashby","board_token":"x"}`, 422},
 		"empty token":      {`{"kind":"greenhouse","board_token":"  "}`, 422},
 		"control chars":    {`{"kind":"greenhouse","board_token":"a\nb"}`, 422},
 		"long token":       {`{"kind":"greenhouse","board_token":"` + strings.Repeat("a", 201) + `"}`, 422},
