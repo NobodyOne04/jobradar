@@ -13,6 +13,13 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
 
+// DB is what a sync needs: queries plus transactions. Both *pgxpool.Pool and one acquired
+// *pgxpool.Conn satisfy it.
+type DB interface {
+	store.DBTX
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
 // Syncer runs one source's sync: fetch, upsert each posting, close what disappeared.
 type Syncer struct {
 	Pool     *pgxpool.Pool
@@ -25,17 +32,22 @@ type Counts struct {
 	Fetched, Created, Updated, Unchanged, Closed int32
 }
 
-// Sync runs one full sync of src and records it in sync_runs. Running it twice in a row
-// creates and updates nothing the second time (ADR 0005).
+// Sync runs one full sync of src on the pool. See SyncOn.
 func (s *Syncer) Sync(ctx context.Context, src store.Source) (Counts, error) {
-	q := store.New(s.Pool)
+	return s.SyncOn(ctx, s.Pool, src)
+}
+
+// SyncOn runs one full sync of src using only db, and records it in sync_runs. Running it
+// twice in a row creates and updates nothing the second time (ADR 0005).
+func (s *Syncer) SyncOn(ctx context.Context, db DB, src store.Source) (Counts, error) {
+	q := store.New(db)
 	run, err := q.StartRun(ctx, src.ID)
 	if err != nil {
 		return Counts{}, fmt.Errorf("start run: %w", err)
 	}
 	log := s.Log.With("source_id", src.ID, "kind", src.Kind, "sync_run_id", run.ID)
 
-	counts, failed, err := s.sync(ctx, q, src, run, log)
+	counts, failed, err := s.sync(ctx, db, q, src, run, log)
 	status := "succeeded"
 	var errText *string
 	switch {
@@ -62,7 +74,7 @@ func (s *Syncer) Sync(ctx context.Context, src store.Source) (Counts, error) {
 	return counts, err
 }
 
-func (s *Syncer) sync(ctx context.Context, q *store.Queries, src store.Source, run store.SyncRun,
+func (s *Syncer) sync(ctx context.Context, db DB, q *store.Queries, src store.Source, run store.SyncRun,
 	log *slog.Logger) (Counts, int, error) {
 	var c Counts
 	adapter, err := s.Adapters.Get(src.Kind)
@@ -80,7 +92,7 @@ func (s *Syncer) sync(ctx context.Context, q *store.Queries, src store.Source, r
 		if ctx.Err() != nil {
 			return c, failed, ctx.Err()
 		}
-		result, err := s.upsert(ctx, adapter, src, raw)
+		result, err := s.upsert(ctx, db, adapter, src, raw)
 		if err != nil {
 			// One bad posting must not stop the others; the run ends 'partial'.
 			failed++
@@ -125,8 +137,8 @@ const (
 )
 
 // upsert stores one posting and its canonical job in one transaction.
-func (s *Syncer) upsert(ctx context.Context, a Adapter, src store.Source, raw RawPosting) (upsertResult, error) {
-	tx, err := s.Pool.Begin(ctx)
+func (s *Syncer) upsert(ctx context.Context, db DB, a Adapter, src store.Source, raw RawPosting) (upsertResult, error) {
+	tx, err := db.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}

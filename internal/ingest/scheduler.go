@@ -23,14 +23,13 @@ type Scheduler struct {
 	Concurrency int           // SYNC_CONCURRENCY
 	Tick        time.Duration // how often to look for due sources
 	Log         *slog.Logger
+
+	once  sync.Once
+	slots chan struct{} // at most Concurrency syncs at once, scheduled or manual
 }
 
 // Run checks for due sources every Tick until ctx is cancelled, then waits for running syncs.
 func (s *Scheduler) Run(ctx context.Context) {
-	sem := make(chan struct{}, s.Concurrency)
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
 	ticker := time.NewTicker(s.Tick)
 	defer ticker.Stop()
 	for {
@@ -38,15 +37,11 @@ func (s *Scheduler) Run(ctx context.Context) {
 		if err != nil && ctx.Err() == nil {
 			s.Log.Error("list due sources", "error", err)
 		}
+		var wg sync.WaitGroup
 		for _, src := range due {
-			select {
-			case sem <- struct{}{}:
-			case <-ctx.Done():
-				return
-			}
 			wg.Go(func() {
-				defer func() { <-sem }()
-				if err := s.SyncLocked(ctx, src); err != nil && !errors.Is(err, ErrSyncRunning) {
+				if err := s.SyncLocked(ctx, src); err != nil && !errors.Is(err, ErrSyncRunning) &&
+					ctx.Err() == nil {
 					s.Log.Warn("sync failed", "source_id", src.ID, "error", err)
 				}
 			})
@@ -62,9 +57,20 @@ func (s *Scheduler) Run(ctx context.Context) {
 	}
 }
 
-// SyncLocked runs one sync while holding the source's Postgres advisory lock, so the
-// scheduler and a manual POST /sources/{id}/sync never overlap, even across processes.
+// SyncLocked runs one sync of src. It waits for one of Concurrency slots (shared by the
+// schedule and manual syncs), then holds the source's Postgres advisory lock so two syncs of
+// one source never overlap, even across processes. The whole sync runs on the one connection
+// that holds the lock: a sync never needs a second connection, so a full pool cannot
+// deadlock it.
 func (s *Scheduler) SyncLocked(ctx context.Context, src store.Source) error {
+	s.once.Do(func() { s.slots = make(chan struct{}, max(1, s.Concurrency)) })
+	select {
+	case s.slots <- struct{}{}:
+		defer func() { <-s.slots }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
 	conn, err := s.Syncer.Pool.Acquire(ctx)
 	if err != nil {
 		return err
@@ -83,6 +89,6 @@ func (s *Scheduler) SyncLocked(ctx context.Context, src store.Source) error {
 		defer cancel()
 		_, _ = conn.Exec(unlockCtx, "SELECT pg_advisory_unlock($1)", src.ID)
 	}()
-	_, err = s.Syncer.Sync(ctx, src)
+	_, err = s.Syncer.SyncOn(ctx, conn, src)
 	return err
 }

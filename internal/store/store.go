@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -20,9 +21,17 @@ type Store struct {
 	db   *sql.DB // database/sql view of the same pool, for goose
 }
 
-// Open connects and verifies the connection.
-func Open(ctx context.Context, url string) (*Store, error) {
-	pool, err := pgxpool.New(ctx, url)
+// Open connects and verifies the connection. maxConns sizes the pool unless the URL sets
+// pool_max_conns; pgxpool's own default, max(4, CPUs), is too small for concurrent syncs.
+func Open(ctx context.Context, url string, maxConns int32) (*Store, error) {
+	cfg, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, fmt.Errorf("database config: %w", err)
+	}
+	if !strings.Contains(url, "pool_max_conns") {
+		cfg.MaxConns = maxConns
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("database config: %w", err)
 	}

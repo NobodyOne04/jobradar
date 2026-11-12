@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- Syncs could deadlock when as many ran at once as the pool had connections; each sync now uses one connection, and manual syncs share the concurrency limit
+
 ### Added
 - Project spec and Phase 0 architecture proposal for review
 - ADRs 0001–0009 (Proposed): repos, Go stack, compose, matcher contract, ingestion, profiles, model versions, applications, observability

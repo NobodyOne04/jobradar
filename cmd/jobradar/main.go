@@ -48,7 +48,8 @@ func run(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	st, err := store.Open(ctx, cfg.DatabaseURL)
+	// Each sync holds one connection; the rest serve the API and the scheduler's queries.
+	st, err := store.Open(ctx, cfg.DatabaseURL, int32(cfg.SyncConcurrency)+10)
 	if err != nil {
 		return err
 	}
