@@ -36,9 +36,13 @@ func CompanyKey(name string) string {
 
 // DedupKey identifies the same job across sources: company + title + location.
 // Deliberately strict: a missed duplicate costs less than a wrong merge (ADR 0005).
+// It is a SHA-256 hex digest: location texts listing ~200 countries made the plain key too
+// long for a btree index entry (2704 bytes).
 func DedupKey(companyKey, title, location string) string {
-	return companyKey + "|" + strings.Join(normalizeWords(title), " ") + "|" +
+	plain := companyKey + "|" + strings.Join(normalizeWords(title), " ") + "|" +
 		strings.Join(normalizeWords(location), " ")
+	sum := sha256.Sum256([]byte(plain))
+	return hex.EncodeToString(sum[:])
 }
 
 // ContentHash changes whenever a field the matcher reads changes.

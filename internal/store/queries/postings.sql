@@ -25,16 +25,24 @@ WHERE id = $1;
 UPDATE jobs SET closed_at = NULL, updated_at = now() WHERE id = $1 AND closed_at IS NOT NULL;
 
 -- name: InsertPosting :exec
-INSERT INTO source_postings (source_id, external_id, job_id, url, raw_payload, payload_hash)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO source_postings (source_id, external_id, job_id, url, raw_payload, payload_hash, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: UpdatePosting :exec
 UPDATE source_postings
-SET url = $2, raw_payload = $3, payload_hash = $4, last_seen_at = now(), closed_at = NULL
+SET url = $2, raw_payload = $3, payload_hash = $4, expires_at = $5, last_seen_at = now(),
+    closed_at = NULL
 WHERE id = $1;
 
 -- name: TouchPosting :exec
 UPDATE source_postings SET last_seen_at = now(), closed_at = NULL WHERE id = $1;
+
+-- name: ClosePostingsExpired :many
+-- Postings past their source-given expiry, whether or not the latest fetch still listed them.
+UPDATE source_postings
+SET closed_at = now()
+WHERE source_id = $1 AND closed_at IS NULL AND expires_at <= now()
+RETURNING job_id;
 
 -- name: ClosePostingsNotSeenSince :many
 -- Postings of this source missing from the latest full fetch.

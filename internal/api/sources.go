@@ -67,7 +67,8 @@ func (s *Sources) create(w http.ResponseWriter, r *http.Request) {
 	in.BoardToken = strings.TrimSpace(in.BoardToken)
 	in.DisplayName = strings.TrimSpace(in.DisplayName)
 	var problems []string
-	if _, err := s.Scheduler.Syncer.Adapters.Get(in.Kind); err != nil {
+	adapter, err := s.Scheduler.Syncer.Adapters.Get(in.Kind)
+	if err != nil {
 		problems = append(problems, fmt.Sprintf("kind %q is not supported", in.Kind))
 	}
 	if msg := checkText("board_token", in.BoardToken, 1, 200); msg != "" {
@@ -80,6 +81,10 @@ func (s *Sources) create(w http.ResponseWriter, r *http.Request) {
 		in.Config = json.RawMessage(`{}`)
 	} else if !isJSONObject(in.Config) {
 		problems = append(problems, "config must be a JSON object")
+	} else if v, ok := adapter.(ingest.ConfigValidator); ok {
+		if err := v.ValidateConfig(in.Config); err != nil {
+			problems = append(problems, "config: "+err.Error())
+		}
 	}
 	if len(problems) > 0 {
 		WriteProblem(w, http.StatusUnprocessableEntity, "invalid source", strings.Join(problems, "; "))

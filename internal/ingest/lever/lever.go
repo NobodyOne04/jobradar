@@ -116,6 +116,21 @@ func (a *Adapter) Fetch(ctx context.Context, src store.Source) ([]ingest.RawPost
 	return nil, fmt.Errorf("more than %d pages: refusing a possibly endless listing", maxPages)
 }
 
+// ValidateConfig accepts {} or {"region": "global"|"eu"} and nothing else.
+func (*Adapter) ValidateConfig(config json.RawMessage) error {
+	var cfg map[string]any
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return err
+	}
+	for k, v := range cfg {
+		region, ok := v.(string)
+		if k != "region" || !ok || (!strings.EqualFold(region, "eu") && !strings.EqualFold(region, "global")) {
+			return fmt.Errorf(`only {"region": "global" or "eu"} is supported, got %q`, k)
+		}
+	}
+	return nil
+}
+
 var workplace = map[string]string{
 	"remote": "remote", "hybrid": "hybrid", "onsite": "onsite", "on-site": "onsite",
 }

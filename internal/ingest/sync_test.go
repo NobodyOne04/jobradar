@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -23,7 +25,8 @@ type fakeAdapter struct {
 	mu       sync.Mutex
 	postings map[string]string // external id -> JSON payload
 	fetchErr error
-	block    chan struct{} // if set, Fetch waits on it
+	block    chan struct{}        // if set, Fetch waits on it
+	expires  map[string]time.Time // per external id
 }
 
 func (f *fakeAdapter) Kind() string { return f.kind }
@@ -38,12 +41,19 @@ func (f *fakeAdapter) Fetch(ctx context.Context, _ store.Source) ([]ingest.RawPo
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.fetchErr != nil {
+	if f.fetchErr != nil && !errors.Is(f.fetchErr, ingest.ErrTruncated) {
 		return nil, f.fetchErr
 	}
 	var out []ingest.RawPosting
 	for id, payload := range f.postings {
-		out = append(out, ingest.RawPosting{ExternalID: id, URL: "https://example.test/" + id, Payload: json.RawMessage(payload)})
+		p := ingest.RawPosting{ExternalID: id, URL: "https://example.test/" + id, Payload: json.RawMessage(payload)}
+		if t, ok := f.expires[id]; ok {
+			p.ExpiresAt = &t
+		}
+		out = append(out, p)
+	}
+	if errors.Is(f.fetchErr, ingest.ErrTruncated) {
+		return out, f.fetchErr // postings and the error, as a truncating adapter does
 	}
 	return out, nil
 }
@@ -287,5 +297,93 @@ func TestConcurrentSyncsFitInASmallPool(t *testing.T) {
 	}
 	if n := e.count(t, `SELECT count(*) FROM jobs`); n != 2 {
 		t.Errorf("jobs = %d, want 2", n)
+	}
+}
+
+func TestTruncatedListingStoresButClosesNothing(t *testing.T) {
+	e := setup(t)
+	e.a.set(map[string]string{
+		"1": `{"title":"Data Engineer","location":"Remote"}`,
+		"2": `{"title":"Analytics Engineer","location":"Berlin"}`,
+	})
+	e.sync(t, e.srcA)
+
+	// Only "1" fits in the truncated listing; "2" may still be live past the cut.
+	e.a.set(map[string]string{
+		"1": `{"title":"Data Engineer","location":"Remote"}`,
+		"3": `{"title":"ML Engineer","location":"Remote"}`,
+	})
+	e.a.fetchErr = fmt.Errorf("%w at 25 pages", ingest.ErrTruncated)
+	c, err := e.syncer.Sync(e.ctx, e.srcA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Created != 1 || c.Closed != 0 {
+		t.Errorf("counts: %+v", c)
+	}
+	runs, _ := e.q.ListRuns(e.ctx, store.ListRunsParams{SourceID: e.srcA.ID, Limit: 1})
+	if runs[0].Status != "partial" || runs[0].Error == nil || !strings.Contains(*runs[0].Error, "truncated") {
+		t.Errorf("run: %+v", runs[0])
+	}
+	if n := e.count(t, `SELECT count(*) FROM jobs WHERE closed_at IS NULL`); n != 3 {
+		t.Errorf("open jobs = %d, want 3", n)
+	}
+}
+
+func TestExpiredPostingsCloseEvenWhenListed(t *testing.T) {
+	e := setup(t)
+	e.a.set(map[string]string{
+		"live":    `{"title":"Data Engineer","location":"Remote"}`,
+		"expired": `{"title":"Old Engineer","location":"Remote"}`,
+	})
+	e.a.expires = map[string]time.Time{
+		"live":    time.Now().Add(24 * time.Hour),
+		"expired": time.Now().Add(-time.Hour),
+	}
+	e.a.fetchErr = ingest.ErrTruncated // even a truncated run applies expiry
+	c, err := e.syncer.Sync(e.ctx, e.srcA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Created != 2 || c.Closed != 1 {
+		t.Errorf("counts: %+v", c)
+	}
+	if n := e.count(t, `SELECT count(*) FROM jobs WHERE closed_at IS NULL AND title = 'Data Engineer'`); n != 1 {
+		t.Error("live job closed")
+	}
+	if n := e.count(t, `SELECT count(*) FROM jobs WHERE closed_at IS NOT NULL AND title = 'Old Engineer'`); n != 1 {
+		t.Error("expired job still open")
+	}
+}
+
+// Migration 00003 hashes plain dedup keys stored before it; they must equal what Go computes
+// now, or new postings would stop linking to those jobs.
+func TestMigrationHashesOldDedupKeysLikeGo(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(ctx, testdb.URL(t), 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	p, err := st.Migrator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Pool.Exec(ctx, `INSERT INTO jobs (title, company_name, company_key, content_hash, dedup_key)
+		VALUES ('Data Engineer', 'Acme', 'acme', 'h', 'acme|data engineer|berlin germany')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 3); err != nil {
+		t.Fatal(err)
+	}
+	var got string
+	if err := st.Pool.QueryRow(ctx, `SELECT dedup_key FROM jobs`).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if want := ingest.DedupKey("acme", "Data Engineer", "Berlin, Germany"); got != want {
+		t.Errorf("migrated key %s, Go key %s", got, want)
 	}
 }

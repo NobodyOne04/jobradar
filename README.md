@@ -48,6 +48,12 @@ syncs it every `SYNC_INTERVAL` (6h). Supported so far:
 | `greenhouse` | the `{board}` in `boards.greenhouse.io/{board}` | none |
 | `lever` | the `{site}` in `jobs.lever.co/{site}` | `{"region":"eu"}` for `jobs.eu.lever.co` sites |
 | `ashby` | the `{board}` in `jobs.ashbyhq.com/{board}` (case matters) | none |
+| `himalayas` | a search query, e.g. `data engineer` (a saved search over all remote jobs) | optional filters: `seniority`, `country`, `employment_type`, `timezone`, `company`, `sort` (strings), `worldwide`, `exclude_worldwide` (true/false) |
+
+A Himalayas search stops at 500 jobs; a broader one is stored up to that and its run is
+marked `partial` ("narrow the search"). Himalayas' terms apply to its jobs: apply through the
+stored link (it is Himalayas' `applicationLink`), show "via Himalayas" wherever they are
+displayed, and don't pass them on to other job boards or feeds.
 
 ```sh
 curl -X POST localhost:8080/api/v1/sources \
