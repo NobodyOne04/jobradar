@@ -1,0 +1,21 @@
+.DS_Store
+.env*
+!.env.example
+
+# Go
+/bin/
+*.test
+*.out
+coverage.*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors
+.idea/
+.vscode/
