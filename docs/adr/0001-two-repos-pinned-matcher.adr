@@ -4,7 +4,7 @@
 - Date: 2026-11-13
 
 The system lives in two repos, `jobradar` (Go backend, compose, system docs) and
-`jobradar-matcher` (Python). The backend pins one matcher git tag, so each repo can be
+`jobradar-matcher` (Python). The backend pins one matcher commit, so each repo can be
 validated on its own without the two drifting apart.
 
 ## Technical details
@@ -23,13 +23,21 @@ review of ARCHITECTURE.md). There is no container registry: the matcher is built
   evaluation).
 
 **Pinning.**
-- `contracts/MATCHER_VERSION` in `jobradar` holds one matcher tag, for example `v0.3.0`.
-- `contracts/matcher.openapi.yaml` is a byte-for-byte copy of `openapi.yaml` at that tag.
-- Upgrading the matcher is one backend PR that changes both files together. Backend CI
-  checks the Go client against the copy (see [0004](0004-matcher-service-contract.adr)).
-- Matcher releases are git tags `vMAJOR.MINOR.PATCH`. A breaking contract change bumps the
-  major version and goes to a new path (`/v2`). The matcher serves the old path until the
-  backend has moved over.
+- The matcher has no release tags for now (your call, 2026-11-13), so the pin is a commit:
+  - `contracts/MATCHER_REF`: a full commit SHA on matcher `main`.
+  - `contracts/MATCHER_VERSION`: the matcher's package version at that commit (`version` in
+    its `pyproject.toml`, for example `0.1.0`). Used by the startup check and the image tag.
+  - `contracts/matcher.openapi.yaml`: a byte-for-byte copy of `openapi.yaml` at that commit.
+- `scripts/pin-matcher.sh <commit>` writes all three from the sibling checkout. It refuses
+  a commit that is not on the matcher's `origin/main`.
+- Upgrading the matcher is one backend PR that changes the three files together. Backend CI
+  checks the Go client against the contract copy (see
+  [0004](0004-matcher-service-contract.adr)).
+- The matcher's version follows semver in its `pyproject.toml`. A breaking contract change
+  bumps the major version and goes to a new path (`/v2`). The matcher serves the old path
+  until the backend has moved over.
+- When matcher tags start, `MATCHER_REF` holds the tag instead of a SHA. Nothing else
+  changes.
 
 **Local checkout.**
 - Developers clone both repos side by side: `~/projects/jobradar` and
@@ -37,24 +45,24 @@ review of ARCHITECTURE.md). There is no container registry: the matcher is built
 - `compose.yaml` builds the matcher from `${MATCHER_SRC:-../jobradar-matcher}` and tags
   the image `jobradar-matcher:${MATCHER_VERSION}` (see
   [0003](0003-local-deployment-compose.adr)).
-- The README documents checking out the pinned tag:
-  `git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_VERSION)"`.
+- The README documents checking out the pinned commit:
+  `git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"`.
 - **Startup check:** at startup and on each readiness probe, the backend calls the
   matcher's `GET /v1/version`.
   - Different major version: matching is disabled and `/readyz` reports it. Ingestion
     keeps running.
   - Different minor or patch version: a warning is logged.
-  - This catches a sibling checkout on the wrong tag.
+  - This catches a sibling checkout on a commit with an incompatible version.
 
 **Consequences.**
 - Good: each repo has its own CI, history and issues. A matcher change cannot slip
   into the backend without the pin moving.
-- Bad: a contract change costs two PRs (the matcher tags, then the backend bumps the pin).
+- Bad: a contract change costs two PRs (the matcher merges, then the backend bumps the pin).
 - Bad: no CI job runs both services together, because CI cannot reach a locally built
   image. The end-to-end check is a local smoke script until a registry exists.
 
 ## Technologies and alternatives
-- Involved: git tags, Docker Compose build contexts.
+- Involved: git commits (tags later), Docker Compose build contexts.
 - Alternatives: monorepo: rejected by you (harder to validate). Matcher images in GHCR,
   pulled by tag: rejected for now (Q7, local only); it can be added later without changing
   the pin files. Git submodule: pins too, but submodules are awkward to update and easy to
