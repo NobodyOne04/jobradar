@@ -2,7 +2,7 @@
 
 **Status:** Proposed. Nothing in this document is approved yet. Once you approve a decision,
 it becomes an ADR in `docs/adr/`. No code gets written before that (SPEC §14).
-**Date:** 2026-11-13
+**Date:** 2026-11-13. Revision 2: your answers to Q1–Q5, two repos, model versioning (§5.1).
 
 Labels: **[F]** fact (from SPEC or a verifiable source), **[A]** assumption I need you to
 confirm, **[R]** my recommendation.
@@ -19,9 +19,13 @@ Section order follows the SPEC §14 deliverables.
 - [A] Scale: a few hundred company boards and roughly 10k–50k open postings. A few syncs per
   day. That fits in one Postgres instance and one process per service with a lot of room to
   spare. Nothing below is designed for more.
-- [A] Postings and the CV are in English. Non-English postings are stored but not matched.
-- [A] It runs on your laptop or one small always-on host. The public API is not exposed to the
-  internet (see Q2).
+- [F] Postings and the CV are in English for v1. Non-English postings are stored but not
+  matched.
+- [F] It runs locally on an always-on machine. The public API binds to localhost and has no
+  auth.
+- [F] The company/source list is decided later. v1 builds the adapters, and the list grows
+  through `POST /sources`.
+- [F] Model versions must support retraining and rolling back to a previous version (§5.1).
 - [A] The candidate profile is hand-written from your CV as a YAML/JSON file (SPEC §5 allows a
   static profile). The system does not parse CVs.
 
@@ -46,7 +50,7 @@ Section order follows the SPEC §14 deliverables.
   back on its own. Reproducibility then depends only on the inputs and the model version.
 - [R] **Synchronous HTTP between the services, no queue.** Go runs matching in batches from
   its own scheduler. The work list comes from a query: "jobs with no result for the current
-  (profile revision, scoring version, job content hash)". No queue table or broker is needed,
+  (profile revision, active model version, job content hash)". No queue table or broker is needed,
   and the same query also handles retries and backfills.
 - [R] **The scheduler runs inside the Go process:** tickers, plus a Postgres advisory lock so
   two backend instances never sync the same source at once. No cron container, no
@@ -68,34 +72,52 @@ Rule [R]: **Go never interprets free text, and Python never decides what to stor
 source changes only `backend/internal/ingest/<source>`. The matcher only sees the normalized
 job (SPEC §4: a new source must not require changes to the matching engine).
 
-## 3. Repository structure (monorepo)
+## 3. Repository structure (two repos)
+
+[F] Your call: two repos, each validated on its own.
 
 ```
-jobradar/
-├─ backend/                      Go module
-│  ├─ cmd/jobradar/main.go       subcommands: serve, migrate
-│  ├─ internal/
-│  │  ├─ api/                    HTTP handlers, request validation, error format
-│  │  ├─ ingest/                 sync loop, the Adapter interface, dedup
-│  │  │  ├─ greenhouse/  lever/  ashby/  himalayas/
-│  │  ├─ matching/               matcher client and batch orchestration
-│  │  ├─ profiles/  applications/
-│  │  ├─ store/                  SQL queries (sqlc output) and transactions
-│  │  └─ config/                 env parsing and validation
-│  └─ migrations/                SQL files, embedded in the binary
-├─ matcher/                      Python package (uv)
-│  ├─ src/matcher/{api,extract,score,taxonomy}/
-│  ├─ data/skills.yaml           curated skill taxonomy (aliases, categories, relations)
-│  ├─ eval/                      labeled dataset and evaluation script
-│  └─ tests/
+jobradar/                        (this repo) Go backend + the system as a whole
+├─ cmd/jobradar/main.go          subcommands: serve, migrate
+├─ internal/
+│  ├─ api/                       HTTP handlers, request validation, error format
+│  ├─ ingest/                    sync loop, the Adapter interface, dedup
+│  │  ├─ greenhouse/  lever/  ashby/  himalayas/
+│  ├─ matching/                  matcher client, batch orchestration, model activation
+│  ├─ profiles/  applications/
+│  ├─ store/                     SQL queries (sqlc output) and transactions
+│  └─ config/                    env parsing and validation
+├─ migrations/                   SQL files, embedded in the binary
+├─ contracts/matcher.openapi.yaml  pinned copy of the matcher contract (see below)
 ├─ profiles/example.yaml         sample profile; your real one is git-ignored
-├─ docs/  SPEC.md  ARCHITECTURE.md  adr/  api/{backend,matcher}.openapi.yaml
-├─ compose.yaml  .env.example
-└─ .github/workflows/ci.yml      one workflow, a job per service
+├─ docs/  SPEC.md  ARCHITECTURE.md  adr/  api/backend.openapi.yaml
+├─ compose.yaml  .env.example    the whole system; matcher pulled by image tag
+└─ .github/workflows/ci.yml
+
+jobradar-matcher/                Python matching service
+├─ src/matcher/{api,extract,score,taxonomy,train,registry}/
+├─ data/skills.yaml              curated skill taxonomy (aliases, categories, relations)
+├─ eval/                         labeled dataset and evaluation script
+├─ openapi.yaml                  the contract, generated by FastAPI and committed
+├─ docs/adr/                     matcher-internal decisions (ML, model format)
+├─ Dockerfile  tests/
+└─ .github/workflows/ci.yml      lint, test, eval gate, publish image to GHCR on tag
 ```
 
-[R] Monorepo: both services and their contract change together in one PR. Two repos would
-make every contract change a pair of PRs to coordinate, with no benefit for one developer.
+How the split stays safe [R]:
+- **The matcher owns its contract.** `openapi.yaml` lives in the matcher repo and is
+  versioned with it. A matcher CI test fails if the generated spec differs from the
+  committed one.
+- **The backend pins a matcher release.** `compose.yaml` names the image
+  `ghcr.io/nobodyone04/jobradar-matcher:vX.Y.Z`, and `contracts/matcher.openapi.yaml` is
+  the copy from that same tag. Backend contract tests check the Go client against that copy.
+  Upgrading the matcher is one backend PR that bumps both together.
+- **Breaking contract changes go to a new path** (`/v2`). The matcher serves both until the
+  backend has moved over.
+- **Local development:** `compose.override.yaml` (git-ignored) can build the matcher from
+  `../jobradar-matcher` instead of pulling the image.
+- **System-level docs** (SPEC, this document, cross-service ADRs) live in `jobradar`.
+  Matcher-internal ADRs live in `jobradar-matcher`.
 
 ## 4. Database schema proposal
 
@@ -123,15 +145,18 @@ candidate_profiles (id, name, created_at)
 profile_revisions  (id, profile_id → candidate_profiles, revision int, schema_version int,
                     data jsonb, created_at, UNIQUE (profile_id, revision))   -- immutable
 
-scoring_versions   (id, model_version text, config_hash text, config jsonb, created_at,
-                    UNIQUE (model_version, config_hash))
+model_versions     (id, version text UNIQUE, matcher_version text, manifest jsonb,
+                    metrics jsonb, status ('candidate','active','retired','rejected'),
+                    activated_at, created_at)   -- at most one 'active' (partial unique index)
+model_activations  (id, model_version_id → model_versions, previous_id → model_versions,
+                    reason text, activated_at)  -- audit trail: every activation and rollback
 match_results      (id, job_id → jobs, profile_revision_id → profile_revisions,
-                    scoring_version_id → scoring_versions, job_content_hash,
+                    model_version_id → model_versions, job_content_hash,
                     score smallint, band text, confidence text, completeness real,
                     hard_constraints text ('pass','fail','unknown'),
                     details jsonb,          -- dimensions, matched/missing/transferable skills
                     latency_ms int, created_at,
-                    UNIQUE (job_id, profile_revision_id, scoring_version_id, job_content_hash))
+                    UNIQUE (job_id, profile_revision_id, model_version_id, job_content_hash))
 
 applications       (id, job_id → jobs, profile_id → candidate_profiles, status, notes,
                     created_at, updated_at, UNIQUE (job_id, profile_id))
@@ -207,17 +232,73 @@ you have not yet rated jobs as good or bad matches.
 5. **Explanations** come straight from the evidence: matched, missing and transferable
    skills, the constraint results with the reason for each, the top responsibility pairs,
    and the unrecognized terms (which feed growth of the taxonomy).
-6. **Traceability:** `model_version` = matcher package version + taxonomy hash + embedding
-   model id and revision. `config_hash` = hash of the weights and thresholds YAML. Both go
-   on every result (SPEC §6.7).
+6. **Traceability:** every result records the model version that produced it, and that
+   version's manifest pins everything else (§5.1, SPEC §6.7).
 7. **Later (C):** once you have about 150+ jobs marked saved/applied/rejected, fit a logistic
    regression on the dimension scores. That replaces the hand-set weights with learned
-   ones, and stays explainable. This is a new scoring version, not a new architecture.
+   ones, and stays explainable. That is a retrain that produces a new model version (§5.1),
+   not a new architecture.
 
 Why not something else: embeddings alone cannot apply hard constraints or say *which* skill
 is missing. Supervised ML has no labels yet. Cross-encoders and LLMs cost a lot and give up
 the explainability and reproducibility the spec asks for. Rules alone miss paraphrase in
 responsibilities, the one place where a small embedding model clearly adds something.
+
+### 5.1 Model versioning, retraining and rollback [R]
+
+What counts as "the model": everything that decides a score. That is the taxonomy,
+weights, thresholds and band cut-offs, and later the trained coefficients, plus the
+pretrained embedding model. These change at different speeds, so there are two version
+axes:
+
+| Axis | What it covers | Changes when | Rollback |
+|---|---|---|---|
+| **Matcher release** (`v1.4.0`, image tag) | code, the pretrained embedding model files (baked in the image, pinned revision) | code or embedding model changes | pin the previous image tag in `compose.yaml` |
+| **Model version** (`m-0007`) | an immutable **bundle**: `manifest.json`, `taxonomy.yaml`, `weights.json` (hand-set or trained), `thresholds.json`, `metrics.json`, plus the snapshot of training labels it came from | taxonomy edits, re-tuning, retraining | activate the previous model version: one API call, no rebuild |
+
+The bundle manifest pins: version id, parent version, creation time, matcher release
+range it works with, embedding model id and revision, training data snapshot hash, random
+seed, and the eval metrics. Every bundle is a few hundred KB, because the large embedding
+model is not part of it.
+
+**Where bundles live.** In a Docker volume, `models/<version>/`, mounted read-only into the
+matcher and written only by the training command. A bundle is never modified after it is
+written. The matcher loads every bundle that passes a checksum and compatibility check, and
+lists them at `GET /v1/models`.
+
+**Who decides which version is active: the backend**, since it owns state. Activation is a
+row in `model_versions` plus an audit row in `model_activations`. Every match request
+names the model version explicitly, so the matcher never holds a hidden "current" setting.
+
+**Retrain flow:**
+1. `GET /api/v1/labels/export`: your saved/applied/rejected decisions and eval grades,
+   as a snapshot file.
+2. `docker compose run matcher train --labels snapshot.jsonl --parent m-0006` writes
+   bundle `m-0007`, then runs the eval set on it and on the active version.
+3. The backend registers it as `candidate`, and `GET /api/v1/models/m-0007` shows its
+   metrics next to the active version's.
+4. `POST /api/v1/models/m-0007/activate`. This is refused if it fails the eval gate
+   (for example, NDCG@10 below the parent's minus tolerance, or any false `fail`), unless
+   you pass `force` with a reason.
+5. The backend re-matches open jobs with the new version in the background. Until a job's
+   new result is ready, the API shows the result from the previous version, marked as such.
+
+**Rollback:** `POST /api/v1/models/m-0006/activate` with a reason. Results from m-0006 are
+still in `match_results` (the unique key includes the model version), so the rollback takes
+effect at once, without recomputing anything. Results from the bad version are kept and
+tagged, so the bug can be investigated.
+
+**Backup:** the bundles volume is copied with the Postgres backup. Each bundle holds its
+own training snapshot and seed, so it can also be rebuilt from scratch.
+
+Alternatives considered:
+- *Bake bundles into the image* (version = image tag): simplest, but every retrain becomes
+  a release and an image build, and rolling back the model also rolls back code. Rejected
+  because you asked for a quick retrain and rollback loop.
+- *MLflow model registry*: adds a server and storage for a few-KB artifact. Rejected per
+  SPEC §13. It becomes worth reconsidering only with many models or many people.
+- *Bundles in Postgres (bytea)*: possible, but the matcher would then need DB access or
+  receive bundles over HTTP, which blurs the boundary. A volume is simpler.
 
 ### Library and model options [R, to confirm with a spike in Phase 3]
 - Embeddings: **fastembed** (ONNX Runtime, CPU, image ~300–500 MB) rather than
@@ -249,11 +330,12 @@ responsibilities, the one place where a small embedding model clearly adds somet
 ### 7.1 Matcher (internal), `/v1`, OpenAPI generated by FastAPI and committed
 
 ```
-POST /v1/match      {profile: ProfileRevision, jobs: [NormalizedJob]}  (max N per batch)
-                 →  {model_version, config_hash, results: [{job_id, score, band, confidence,
+POST /v1/match      {model_version, profile: ProfileRevision, jobs: [NormalizedJob]}  (max N per batch)
+                 →  {model_version, matcher_version, results: [{job_id, score, band, confidence,
                      completeness, hard_constraints, dimensions[], skills:{matched, missing,
                      transferable, unrecognized}, explanations[]}]}
-GET  /v1/version → {model_version, config_hash, config}
+GET  /v1/models  → bundles loaded: [{version, manifest, metrics}]     GET /v1/version → matcher release
+                    (unknown or incompatible model_version → 422 problem+json)
 GET  /healthz    → process alive        GET /readyz → model loaded
 ```
 - Auth: `Authorization: Bearer $MATCHER_TOKEN`, a shared secret from env [R]. The port is
@@ -271,6 +353,8 @@ GET    /sources   POST /sources   PATCH /sources/{id}   POST /sources/{id}/sync
 GET    /sources/{id}/runs
 GET    /profiles  POST /profiles  POST /profiles/{id}/revisions  GET /profiles/{id}/revisions/{rev}
 GET    /matches?profile_id=&band=      POST /matches/recompute   (async, returns a run id)
+GET    /models   GET /models/{v}   POST /models/{v}/activate {reason, force?}   GET /models/activations
+GET    /labels/export
 GET    /applications   PUT /applications/{job_id}  {status, note}
 GET    /applications/{job_id}/events
 GET    /healthz   GET /readyz (DB reachable, migrations at the latest version; matcher status reported, not required)
@@ -282,9 +366,9 @@ GET    /healthz   GET /readyz (DB reachable, migrations at the latest version; m
 
 | Phase | Delivers | Acceptance criteria |
 |---|---|---|
-| 1 Foundation | repo layout, Go `serve`/`migrate`, Python FastAPI skeleton, initial migration, compose with health checks, CI (lint, test, govulncheck, pip-audit) | `cp .env.example .env && docker compose up` brings all three up healthy. `/readyz` is green on both services. CI is green. |
+| 1 Foundation | both repos, Go `serve`/`migrate`, Python FastAPI skeleton, initial migration, compose with health checks, CI (lint, test, govulncheck, pip-audit) | `cp .env.example .env && docker compose up` brings all three up healthy. `/readyz` is green on both services. CI is green. |
 | 2 Ingestion | Greenhouse + Lever adapters first, then Ashby + Himalayas; normalization, dedup, scheduler, sync runs | Syncing the same board twice gives 0 new rows (idempotent). Recorded HTTP fixtures cover each adapter. 429/5xx responses are retried with backoff. A closed posting gets `closed_at` set. A cross-source duplicate links to one job. |
-| 3 Matching | profile schema + revisions, taxonomy, extraction, dimensions, scoring, explanations, eval set, Go orchestration | The eval script reports metrics, and a baseline is committed. Same inputs give a byte-identical result. A missing salary gives `unknown`, not `fail`. Results are stored with their versions. |
+| 3 Matching | profile schema + revisions, taxonomy, extraction, dimensions, scoring, explanations, eval set, Go orchestration, model bundles + activation/rollback | The eval script reports metrics, and a baseline is committed. Activating m-0001, then m-0002, then rolling back to m-0001 serves m-0001 results again with no recompute. Same inputs give a byte-identical result. A missing salary gives `unknown`, not `fail`. Results are stored with their versions. |
 | 4 Applications & API | job search/filter, match listing, application lifecycle and events | Every endpoint is in the OpenAPI file and covered by contract tests. Every status transition is recorded with a timestamp. |
 | 5 Hardening | metrics endpoint, timeouts/retry review, security audit, load test of match batches, docs | No open high-severity security findings. A matcher outage degrades gracefully: ingestion keeps running, results are "pending". The README alone gets a fresh clone running. |
 
@@ -294,13 +378,14 @@ The MVP (useful end to end) is phases 1–3 plus a minimal `GET /jobs` sorted by
 
 | # | Decision | Recommendation | Main alternative |
 |---|---|---|---|
-| 1 | Repo shape | monorepo, `backend/` + `matcher/` | two repos |
+| 1 | Repo shape | **two repos** (your call): `jobradar` (Go + compose + system docs), `jobradar-matcher`; contract owned by the matcher, pinned by tag in the backend | monorepo (rejected by you) |
 | 2 | Go stack | stdlib `net/http` routing, **pgx v5** + **sqlc**, **goose** migrations embedded, `log/slog` | chi/echo; GORM (rejected: hides SQL); golang-migrate |
 | 3 | Python stack | **FastAPI** + Pydantic, **uv**, pytest, ruff, mypy | Flask/Litestar; Poetry |
 | 4 | Service interaction | stateless matcher, sync HTTP batches, bearer token | matcher reads the DB itself; a queue |
 | 5 | Scheduling | in-process scheduler + advisory locks; work found by query | separate cron/worker container; River (Postgres job queue) |
 | 6 | Schema | as in §4 (jsonb profile revisions, postings → jobs) | fully relational profile |
 | 7 | Matching | hybrid A+D, banded score, separate confidence, C later | embeddings-only; supervised from day one |
+| 7a | Model versioning | two axes (matcher release, model bundle); immutable bundles on a volume; activation and rollback in the backend, gated by eval (§5.1) | bundles in the image; MLflow |
 | 8 | Evaluation | labeled set graded by you + CI regression gate | unit tests only |
 | 9 | Observability | slog JSON logs + request IDs; Prometheus-format `/metrics` on both, **no** Prometheus/Grafana containers until needed | OpenTelemetry tracing stack |
 | 10 | Versions | Go and Python pinned to the current stable release at Phase 1 start (Python capped at the latest version the ONNX Runtime wheels support) | n/a |
@@ -330,14 +415,21 @@ The MVP (useful end to end) is phases 1–3 plus a minimal `GET /jobs` sorted by
    changes since a time [A]. "Incremental" therefore means a full fetch per board plus a
    diff by `payload_hash`, which is cheap at this scale.
 
+9. **Cross-repo drift** (medium, new with two repos). The backend could talk to a matcher
+   version it was not tested against. Mitigation: compose pins the image tag, a pinned copy
+   of the contract is tested in backend CI, and `/v1/version` is checked at backend startup,
+   which refuses an incompatible major version.
+10. **Bundle and release compatibility** (low). An old bundle may not load on a new matcher.
+    The manifest declares a compatible release range, and the matcher refuses bundles
+    outside it, so they cannot fail silently.
+
 ## 11. Open questions (answers may change the design)
 
-- **Q1.** Where will it run day to day: your laptop (syncs only while it is on), or an
-  always-on host? This changes whether the scheduler needs catch-up logic.
-- **Q2.** Is the public API local-only (bound to localhost, no auth), or do you want an API
-  key from day one?
-- **Q3.** Do you have a starting list of target companies (or their ATS board URLs)?
-  If not, should Phase 2 include a one-off seed list I put together from public sources?
-- **Q4.** Are you willing to grade about 150 postings for the eval set (§6)? It is the one
-  thing I cannot do for you.
-- **Q5.** Are English-only postings and CV fine for v1?
+Answered (revision 2): Q1 local, always on · Q2 localhost, no auth · Q3 later, sources
+are extensible · Q4 yes, you'll grade the eval set · Q5 English only for v1.
+
+New:
+- **Q6.** Repo names: `jobradar` (backend + compose) and `jobradar-matcher`. OK?
+- **Q7.** Matcher images published to GHCR (private, free for private repos within limits)?
+  The alternative is building locally only from a sibling checkout, which skips the
+  registry but loses "pin a tested release".
