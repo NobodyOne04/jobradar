@@ -37,7 +37,7 @@ func Migrated(t *testing.T) *store.Store {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	st, err := store.Open(ctx, URL(t))
+	st, err := store.Open(ctx, URL(t), 10)
 	if err != nil {
 		t.Fatal(err)
 	}

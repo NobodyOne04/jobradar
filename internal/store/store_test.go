@@ -12,7 +12,7 @@ import (
 func TestMigrationsUpDownStatus(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	st, err := store.Open(ctx, testdb.URL(t))
+	st, err := store.Open(ctx, testdb.URL(t), 4)
 	if err != nil {
 		t.Fatal(err)
 	}

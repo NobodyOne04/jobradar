@@ -251,3 +251,41 @@ func TestSchedulerLockAndDueSources(t *testing.T) {
 		t.Errorf("due after disabling: %+v", due)
 	}
 }
+
+// Regression: each sync used to hold one connection for its lock and take another for its
+// queries, so Concurrency syncs on a pool of Concurrency connections waited forever.
+func TestConcurrentSyncsFitInASmallPool(t *testing.T) {
+	e := setup(t)
+	e.a.set(map[string]string{"1": `{"title":"Data Engineer","location":"Remote"}`})
+	e.b.set(map[string]string{"2": `{"title":"Analytics Engineer","location":"Berlin"}`})
+
+	cfg := e.pool.Config()
+	cfg.MaxConns = 2
+	small, err := pgxpool.NewWithConfig(e.ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer small.Close()
+	syncer := &ingest.Syncer{Pool: small, Adapters: e.syncer.Adapters, Log: e.syncer.Log}
+	sched := &ingest.Scheduler{Syncer: syncer, Concurrency: 2, Log: syncer.Log}
+
+	ctx, cancel := context.WithTimeout(e.ctx, 20*time.Second)
+	defer cancel()
+	var wg sync.WaitGroup
+	errs := make(chan error, 3)
+	for _, src := range []store.Source{e.srcA, e.srcB, e.srcA} { // 3 requests, 2 slots
+		wg.Go(func() {
+			if err := sched.SyncLocked(ctx, src); err != nil && !errors.Is(err, ingest.ErrSyncRunning) {
+				errs <- err
+			}
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatalf("sync did not finish: %v", err)
+	}
+	if n := e.count(t, `SELECT count(*) FROM jobs`); n != 2 {
+		t.Errorf("jobs = %d, want 2", n)
+	}
+}
