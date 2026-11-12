@@ -1,0 +1,52 @@
+# 0008. Application tracking: a status per job and profile, with an event log
+
+- Status: Proposed (not approved)
+- Date: 2026-11-13
+
+An application is a row per (job, profile) with its current status. Every transition is
+appended to an event log that holds the timestamps and notes. "Discovered" is the absence
+of a row, which keeps discovery and matching separate from application status.
+
+## Technical details
+
+**Problem.** SPEC §7 lists the statuses discovered, saved, applied, interview, offer,
+rejected and archived. It asks for timestamps and notes, and keeps discovery and match
+status separate from application status.
+
+**Tables** (migration `0005_applications.sql`):
+```sql
+applications       (id bigserial PK, job_id → jobs, profile_id → candidate_profiles,
+                    status text NOT NULL CHECK (status IN ('saved','applied','interview','offer','rejected','archived')),
+                    notes text NOT NULL DEFAULT '', created_at, updated_at,
+                    UNIQUE (job_id, profile_id))
+application_events (id bigserial PK, application_id → applications, from_status text, to_status text NOT NULL,
+                    note text, occurred_at timestamptz NOT NULL)
+```
+- `discovered` is not stored. The API returns it for a job that has no `applications` row.
+- Each transition updates `applications` and inserts an event in the same transaction.
+- `occurred_at` defaults to now. You can backdate it ("I applied on Monday").
+
+**Transitions.**
+- Any status can move to `archived` or `rejected`.
+- Forward moves are `saved → applied → interview → offer`, and a stage may be skipped
+  (`saved → interview`).
+- Moving backwards needs `force: true` (corrections happen), and it is logged like any
+  other transition.
+- The rules live in one function, `applications.Transition(from, to, force) error`, which
+  is tested with a table of every pair.
+
+**API.**
+- `PUT /api/v1/applications/{job_id} {status, note?, occurred_at?, force?}` is idempotent.
+  Setting the same status again with no note is a no-op.
+- `GET /api/v1/applications?status=` and `GET /api/v1/applications/{job_id}/events`.
+
+**Labels for retraining.** These events are the training labels for model retraining
+(matcher ADR 0003, "Evaluation"). `GET /api/v1/labels/export` writes a JSONL snapshot:
+`{job (normalized), profile_revision_id, outcome, occurred_at}`, plus your eval grades.
+
+## Technologies and alternatives
+- Alternatives:
+  - A status column on `jobs`: mixes the job's lifecycle with yours and can't support
+    several profiles.
+  - Storing a `discovered` row for every job: tens of thousands of rows that say nothing.
+  - A Postgres enum type: CHECK constraints are easier to migrate.

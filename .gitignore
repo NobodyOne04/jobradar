@@ -2,6 +2,12 @@
 .env*
 !.env.example
 
+# personal data: real profiles, exported labels
+/profiles/*
+!/profiles/example.yaml
+/labels/
+compose.override.yaml
+
 # Go
 /bin/
 *.test

@@ -1,0 +1,79 @@
+# 0007. Matching orchestration, model activation and rollback
+
+- Status: Proposed (not approved)
+- Date: 2026-11-13
+
+The backend decides which model version is active and keeps an audit trail of every
+activation and rollback. It finds jobs that need (re)matching with a query and stores
+results keyed by job, profile revision, model version and job content. A rollback
+therefore takes effect at once.
+
+## Technical details
+
+**Problem.**
+- Results must be reproducible and traceable to a model version (SPEC §6.2, §6.7).
+- The architecture must allow model replacement (SPEC §6.8).
+- You want to retrain and to roll back a bad version quickly.
+- The matcher builds and serves immutable model bundles (matcher ADR 0004, "Model bundles").
+- This ADR covers the backend side: which version is active, when to match, and how
+  results are stored.
+
+**Tables** (migration `0004_matching.sql`):
+```sql
+model_versions    (id bigserial PK, version text NOT NULL UNIQUE,   -- 'm-0007'
+                   matcher_version text NOT NULL, manifest jsonb NOT NULL, metrics jsonb NOT NULL,
+                   status text NOT NULL CHECK (status IN ('candidate','active','retired','rejected')),
+                   activated_at timestamptz, created_at timestamptz NOT NULL DEFAULT now())
+CREATE UNIQUE INDEX one_active_model ON model_versions ((true)) WHERE status = 'active';
+model_activations (id bigserial PK, model_version_id → model_versions, previous_id → model_versions,
+                   reason text NOT NULL, forced bool NOT NULL DEFAULT false, activated_at timestamptz NOT NULL)
+match_results     (id bigserial PK, job_id → jobs, profile_revision_id → profile_revisions,
+                   model_version_id → model_versions, job_content_hash text NOT NULL,
+                   score smallint NOT NULL, band text NOT NULL, confidence text NOT NULL,
+                   completeness real NOT NULL, hard_constraints text NOT NULL,
+                   details jsonb NOT NULL, latency_ms int, created_at,
+                   UNIQUE (job_id, profile_revision_id, model_version_id, job_content_hash))
+```
+
+**Registering versions.**
+- The backend polls the matcher's `GET /v1/models` at startup and every 5 minutes.
+- Bundles it hasn't seen are inserted as `candidate`, with their manifest and metrics.
+- The first bundle (`m-0001`, hand-set weights) is activated automatically when no version
+  is active. Every later activation is explicit.
+
+**Activation and rollback** (`POST /api/v1/models/{version}/activate {reason, force?}`), in
+one transaction:
+1. Lock the current active row.
+2. Check the eval gate against the current version's metrics: NDCG@10 must not drop by
+   more than the tolerance, and false hard-constraint fails must stay at 0. Thresholds are
+   in the manifest.
+3. If the gate fails and `force` is not set, return 409 with the comparison.
+4. The current version becomes `retired` and the target becomes `active`.
+5. Insert a `model_activations` row with the reason.
+
+Rollback is the same call on an older version, with its reason, for example
+`POST /models/m-0006/activate {"reason":"m-0007 drops remote jobs"}`. No recompute is needed
+for jobs m-0006 already matched, because its results are still in `match_results`.
+`GET /api/v1/models/activations` shows the history.
+
+**Matching loop** (inside `serve`, every 30 s or when a sync finishes):
+- The pending work is a query, not a queue: open jobs with no result for
+  `(current revision of each active profile, active model version, jobs.content_hash)`.
+- Batches of up to 50 are sent to the matcher (see
+  [0004](0004-matcher-service-contract.adr)), and results are inserted with
+  `ON CONFLICT DO NOTHING`. A crash or retry therefore never duplicates a result.
+- Newly ingested jobs come first, then the backfill after an activation, oldest last.
+- After an activation, the API serves the newest result for each job from any version until
+  that job has a result from the active version. The response says which version produced
+  it (`model_version`, `stale: true`), so it never quietly mixes versions.
+
+**Kept forever:** all results of all versions. Results are small, and the history is what
+makes investigating a bad version possible.
+
+## Technologies and alternatives
+- Involved: Postgres partial unique index, `ON CONFLICT`.
+- Alternatives:
+  - A version tag in the matcher's environment (`MODEL_VERSION=m-0007`): it hides the
+    current version from the backend, and a rollback means editing compose.
+  - Deleting old results on activation: rollback would then need a full recompute.
+  - MLflow registry: a server for a few-KB artifact (SPEC §13).

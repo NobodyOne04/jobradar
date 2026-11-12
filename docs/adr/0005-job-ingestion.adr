@@ -1,0 +1,99 @@
+# 0005. Job ingestion: source adapters, an in-process scheduler, idempotent upserts
+
+- Status: Proposed (not approved)
+- Date: 2026-11-13
+
+Each job source is a small adapter behind one interface. An in-process scheduler syncs
+enabled sources. Every posting is upserted by its source ID, so repeated syncs change
+nothing. Postings link to one canonical job, which is how cross-source dedup works.
+
+## Technical details
+
+**Problem.** SPEC §4 asks for multiple sources, incremental sync, retries, rate-limit
+handling, idempotency, raw payload preservation, a normalized job and cross-source dedup. A
+new source must not touch the matcher. The list of companies is decided later (Q3), so
+sources are rows added through the API, not code.
+
+**Tables** (migration `0002_ingestion.sql`):
+```sql
+sources         (id bigserial PK, kind text NOT NULL CHECK (kind IN ('greenhouse','lever','ashby','himalayas')),
+                 board_token text NOT NULL, display_name text, enabled bool NOT NULL DEFAULT true,
+                 config jsonb NOT NULL DEFAULT '{}', created_at timestamptz NOT NULL DEFAULT now(),
+                 UNIQUE (kind, board_token))
+sync_runs       (id bigserial PK, source_id → sources, started_at, finished_at,
+                 status text CHECK IN ('running','succeeded','failed','partial'),
+                 fetched, created, updated, unchanged, closed int, error text)
+jobs            (id bigserial PK, title, company_name, company_key, description_text, description_html,
+                 location_text, remote_policy CHECK IN ('remote','hybrid','onsite','unknown'),
+                 countries text[], employment_type CHECK IN ('full_time','part_time','contract','internship','unknown'),
+                 salary_min numeric, salary_max numeric, salary_currency char(3),
+                 salary_period CHECK IN ('year','month','day','hour'),
+                 posted_at, closed_at, content_hash text NOT NULL, dedup_key text NOT NULL,
+                 created_at, updated_at)
+source_postings (id bigserial PK, source_id → sources, external_id text NOT NULL, job_id → jobs,
+                 url text, raw_payload jsonb NOT NULL, payload_hash text NOT NULL,
+                 first_seen_at, last_seen_at, closed_at, UNIQUE (source_id, external_id))
+```
+- Unknown is an explicit value (`remote_policy = 'unknown'`, NULL salary), never a
+  guess. The matcher then treats it as missing (SPEC §6.3).
+- `content_hash` is a SHA-256 of the normalized fields the matcher reads. A change marks
+  the job for re-matching (see
+  [0007](0007-matching-orchestration-model-versions.adr)).
+- Only the latest raw payload is kept. Payload history is left out until it is needed.
+
+**Adapter interface** (`internal/ingest`):
+```go
+type Adapter interface {
+    Kind() string
+    Fetch(ctx context.Context, src Source) ([]RawPosting, error)  // the board's full current list
+    Normalize(raw RawPosting) (NormalizedJob, error)              // pure, no I/O
+}
+```
+- One package per source: `internal/ingest/{greenhouse,lever,ashby,himalayas}`.
+- `Normalize` is pure, so it is unit-tested on recorded payloads in `testdata/`.
+- A new source is a new package plus one line in the registry. Nothing else changes.
+- The exact endpoints and terms of use of each source are checked when its adapter is
+  built, before any code. The terms and endpoint go in the adapter's package doc.
+
+**Sync of one source** (one transaction per posting batch):
+1. Insert a `sync_runs` row with status `running`.
+2. Call `Fetch`. HTTP retries handle 429 and 5xx with exponential backoff and jitter, and
+   honour `Retry-After`. Each source has its own rate limiter (`golang.org/x/time/rate`)
+   and a descriptive User-Agent.
+3. For each posting, upsert by `(source_id, external_id)`:
+   - The `payload_hash` is unchanged: only `last_seen_at` is touched.
+   - Otherwise, normalize and upsert the canonical job.
+4. Postings that are absent from the fetch get `closed_at`. The job closes once all of its
+   postings are closed.
+5. Finish the `sync_runs` row with the counts.
+- "Incremental" here means: fetch the board's full list, then diff by hash. These APIs
+  mostly return the current list rather than changes since a time [to verify per source].
+  At this volume that is cheap.
+- Running the same sync twice gives 0 created and 0 updated. That is the idempotency
+  acceptance test.
+
+**Dedup.**
+- `dedup_key` = `company_key` + normalized title + normalized location, where
+  `company_key` is the company name lowercased with legal suffixes stripped.
+- A new posting whose key matches an open job links to that job instead of creating
+  another.
+- This is deliberately strict: a missed duplicate costs less than a wrong merge. Fuzzy
+  matching is left out until real data shows the need.
+
+**Scheduler** (`internal/ingest`, inside `serve`):
+- A `time.Ticker` every `SYNC_INTERVAL` (default 6h) picks enabled sources whose last
+  successful run is older than the interval. Up to `SYNC_CONCURRENCY` (default 4) run at
+  once.
+- Catch-up after downtime needs no special code: on startup, every overdue source is due.
+- Each source sync holds `pg_try_advisory_lock(source_id)`, so a manual
+  `POST /sources/{id}/sync` and the ticker never overlap.
+- Graceful shutdown cancels the context. An interrupted run is marked `failed`.
+
+## Technologies and alternatives
+- Involved: net/http client, golang.org/x/time/rate, Postgres advisory locks.
+- Alternatives:
+  - River or another Postgres job queue: durable jobs aren't needed when the work list can
+    be rebuilt from `sync_runs`.
+  - A cron container calling the API: one more moving part.
+  - A generic scraping framework: these are JSON APIs.
+  - Storing every payload version: unnecessary until history is wanted.

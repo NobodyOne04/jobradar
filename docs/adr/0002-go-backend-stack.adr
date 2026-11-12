@@ -1,0 +1,73 @@
+# 0002. Go backend stack: stdlib HTTP, pgx + sqlc, goose, slog
+
+- Status: Proposed (not approved)
+- Date: 2026-11-13
+
+The backend uses the standard library for HTTP and logging. Postgres access is pgx with
+SQL written by hand and type-checked by sqlc, and migrations use goose, embedded in the
+binary.
+
+## Technical details
+
+**Problem.** The backend needs routing, Postgres access, migrations, config and structured
+logs (SPEC §3, §10). Mature libraries should be used where they exist (SPEC §13), but no
+framework should hide the SQL or the HTTP layer.
+
+**Toolchain.** Go 1.27 (the current stable; 1.27.3 is installed locally). The `go` line in
+`go.mod` is bumped on purpose, in its own PR.
+
+**Layout** (the module is at the repo root, see [0001](0001-two-repos-pinned-matcher.adr)):
+- `cmd/jobradar/main.go` has two subcommands:
+  - `serve`: the API, the scheduler and the matching loop.
+  - `migrate up|down|status`.
+- `internal/<area>/`, one package per responsibility: `api`, `ingest`, `matching`,
+  `profiles`, `applications`, `store`, `config`.
+  - Dependencies point inward: `api` → domain packages → `store`.
+  - `store` imports no domain package.
+
+**HTTP.**
+- `net/http` with the method and wildcard patterns of `ServeMux`
+  (`GET /api/v1/jobs/{id}`), available since Go 1.22.
+- Middleware is plain `func(http.Handler) http.Handler`: request ID, logging, panic
+  recovery, timeout.
+- Errors are RFC 9457 `application/problem+json`, from one helper in `internal/api`.
+
+**Database.**
+- `jackc/pgx/v5` with `pgxpool`.
+- Queries live in `internal/store/queries/*.sql`. `sqlc generate` turns them into typed Go
+  in `internal/store`, and the generated code is committed.
+- CI runs `sqlc diff`, which fails if the generated code is stale.
+- Transactions are explicit (`pool.BeginTx`) in `store` methods that need them.
+
+**Migrations.**
+- `pressly/goose/v3` with SQL files in `migrations/`, embedded with `embed.FS`, so the
+  binary carries its own schema.
+- `jobradar migrate up` runs as a one-shot compose service before `serve` (see
+  [0003](0003-local-deployment-compose.adr)).
+- `serve` checks that the schema is at the latest version and reports not-ready otherwise.
+
+**Config.**
+- `internal/config` reads environment variables with `os.Getenv` and `strconv`, and
+  `Validate()` returns every error at once.
+- The documented variables are in `.env.example`. There is no config file and no
+  config library.
+
+**Logging.** `log/slog` with the JSON handler. Details are in
+[0009](0009-observability.adr).
+
+**Tests.**
+- The standard `testing` package.
+- Database tests run against a real Postgres from `testcontainers-go`, migrated with goose.
+- HTTP adapters are tested with `httptest.Server` and recorded fixtures.
+
+**Tooling in CI:** `gofmt`, `go vet`, `golangci-lint`, `go test -race`, `govulncheck`,
+`sqlc diff`.
+
+## Technologies and alternatives
+- Involved: Go 1.27, pgx v5, sqlc, goose v3, testcontainers-go, golangci-lint, govulncheck.
+- Alternatives:
+  - chi or echo: unnecessary since `ServeMux` gained patterns.
+  - GORM: hides the SQL and the query plans.
+  - golang-migrate: fine too, but goose embeds migrations more simply and supports Go
+    migrations if one is ever needed.
+  - viper/envconfig: about 30 lines of `os.Getenv` cover a dozen variables.

@@ -10,6 +10,8 @@ None yet: Phase 0 (architecture) comes before any code.
 - `docs/SPEC.md`: the project specification
 - `docs/ARCHITECTURE.md`: Phase 0 proposal (status Proposed until I approve; approved
   decisions move to `docs/adr/`)
+- `docs/adr/`: backend and cross-service ADRs (`NNNN-title.adr`), index in its README;
+  matcher-internal ADRs live in `jobradar-matcher/docs/adr/`
 
 ## Conventions
 - Phase 0 first: architecture proposal and ADRs, approved by me, before any implementation

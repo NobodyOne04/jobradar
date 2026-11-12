@@ -1,0 +1,67 @@
+# 0006. Candidate profiles: immutable, schema-validated JSON revisions
+
+- Status: Proposed (not approved)
+- Date: 2026-11-13
+
+A profile is a named container. Its content is a sequence of immutable revisions, each one
+JSON document validated against a versioned JSON Schema. Match results point to the exact
+revision they used.
+
+## Technical details
+
+**Problem.**
+- SPEC §5 asks for a structured profile derived from your CV.
+- v1 can use a static, hand-curated profile, but the design must allow several profiles
+  and revisions later.
+- Nothing candidate-specific may be hardcoded in the matcher.
+- Reproducible matching (SPEC §6.2) needs the profile used for a result to never change
+  afterwards.
+
+**Tables** (migration `0003_profiles.sql`):
+```sql
+candidate_profiles (id bigserial PK, name text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now())
+profile_revisions  (id bigserial PK, profile_id → candidate_profiles, revision int NOT NULL,
+                    schema_version int NOT NULL, data jsonb NOT NULL, created_at,
+                    UNIQUE (profile_id, revision))
+```
+- The current revision is the one with the highest `revision`. Nothing points to it, so
+  nothing can go stale.
+- Revisions are never updated or deleted by the application. The store package has no
+  UPDATE query for this table.
+
+**Document** (`schema_version` 1, the schema in `docs/api/profile.schema.json`):
+- `experience[]`: `{title, company, start, end?, responsibilities[], achievements[],
+  skills[]}`
+- `seniority`, `years_of_experience`
+- `skills[]`: `{name, level?, years?}`. Names are free text, and the matcher maps them to
+  its taxonomy.
+- `preferences`:
+  - `employment_types[]`
+  - `remote_only`
+  - `locations[]` and `timezones[]` (an allowed UTC offset range)
+  - `salary {min, currency, period}`
+  - `hard_constraints[]`: which preferences are gates and which are soft.
+- `extra`: a free-form object for preferences the schema doesn't know yet.
+
+The schema is checked by the backend on `POST /profiles/{id}/revisions` and by the matcher
+on every request. A change to the schema bumps `schema_version`. Older revisions keep
+theirs, and the matcher supports every version it has ever accepted.
+
+**Loading your profile.**
+- You write `profiles/<name>.yaml` from your CV. It is git-ignored, and
+  `profiles/example.yaml` shows the shape.
+- `jobradar profile import profiles/<name>.yaml` (or the API) creates a new revision.
+  When the content equals the latest revision, it is a no-op, so the import is idempotent.
+
+**Privacy.**
+- Profile data is never logged. Log lines carry the profile id and revision only.
+- It stays in the local Postgres and the git-ignored file (SPEC §10).
+
+## Technologies and alternatives
+- Involved: Postgres jsonb, JSON Schema 2020-12 (`santhosh-tekuri/jsonschema` in Go,
+  `jsonschema` in Python tests).
+- Alternatives:
+  - Fully relational profile (experience, skills and preference tables): enforced
+    structure, but a dozen tables are always read whole, and comparing revisions becomes
+    a multi-table diff.
+  - A mutable single profile row: breaks reproducibility.
