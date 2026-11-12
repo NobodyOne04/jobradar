@@ -11,5 +11,7 @@
 - Local deployment: `compose.yaml` with Postgres 18, migrations, backend, matcher and MLflow 3.18, health checks, `jobradar healthcheck`, backup and restore in the README
 
 ### Changed
+- ADR 0010: MLflow UI on host port 5001, psycopg 3, `--allowed-hosts` (as built in the compose PR)
+- CI workflow disabled until the coding phases are done; checks run locally
 - ADR 0001: the backend pins a matcher commit SHA instead of a tag; `scripts/pin-matcher.sh` and `contracts/`
 - ADR 0010 accepted; ADR 0003 updated for the MLflow service and volumes

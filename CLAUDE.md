@@ -52,4 +52,7 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - Ports on the host: 127.0.0.1 only. MLflow UI is 5001 (macOS AirPlay holds 5000); MLflow
   only accepts the Host names in `--allowed-hosts`: add one there if a new caller appears.
 - Never `docker compose down -v` on the real stack: it deletes the databases and models.
+- CI is disabled (`gh workflow disable CI`, 2026-11-13) until the coding phases are done.
+  Before every PR, run its checks locally: gofmt, `go vet`, golangci-lint, `go test -race`,
+  govulncheck. Re-enable with `gh workflow enable CI`.
 - Candidate data is personal: never hardcode it in the matching engine, never log it.
