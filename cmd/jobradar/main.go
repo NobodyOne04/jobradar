@@ -172,6 +172,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	profileAPI := &api.Profiles{Queries: queries, Service: &profiles.Service{Pool: st.Pool}, Log: log}
 	applicationAPI := &api.Applications{Queries: queries, Service: &applications.Service{Pool: st.Pool}, Log: log}
 	modelAPI := &api.Models{Queries: queries, Log: log}
+	jobAPI := &api.Jobs{Queries: queries, Log: log}
 
 	var background sync.WaitGroup
 	background.Go(func() { scheduler.Run(ctx) })
@@ -184,7 +185,8 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	srv := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: api.NewHandler(log, ready, cfg.RequestTimeout, cfg.AllowedHosts,
-			sources.Register, profileAPI.Register, applicationAPI.Register, modelAPI.Register),
+			sources.Register, profileAPI.Register, applicationAPI.Register, modelAPI.Register,
+			jobAPI.Register),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      cfg.RequestTimeout + 5*time.Second, // backstop behind the per-request deadline
 	}

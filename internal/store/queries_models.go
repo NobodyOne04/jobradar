@@ -36,26 +36,27 @@ type CandidateProfile struct {
 }
 
 type Job struct {
-	ID              int64      `json:"id"`
-	Title           string     `json:"title"`
-	CompanyName     string     `json:"company_name"`
-	CompanyKey      string     `json:"company_key"`
-	DescriptionText string     `json:"description_text"`
-	DescriptionHtml string     `json:"description_html"`
-	LocationText    string     `json:"location_text"`
-	RemotePolicy    string     `json:"remote_policy"`
-	Countries       []string   `json:"countries"`
-	EmploymentType  string     `json:"employment_type"`
-	SalaryMin       *float64   `json:"salary_min"`
-	SalaryMax       *float64   `json:"salary_max"`
-	SalaryCurrency  *string    `json:"salary_currency"`
-	SalaryPeriod    *string    `json:"salary_period"`
-	PostedAt        *time.Time `json:"posted_at"`
-	ClosedAt        *time.Time `json:"closed_at"`
-	ContentHash     string     `json:"content_hash"`
-	DedupKey        string     `json:"dedup_key"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID              int64       `json:"id"`
+	Title           string      `json:"title"`
+	CompanyName     string      `json:"company_name"`
+	CompanyKey      string      `json:"company_key"`
+	DescriptionText string      `json:"description_text"`
+	DescriptionHtml string      `json:"description_html"`
+	LocationText    string      `json:"location_text"`
+	RemotePolicy    string      `json:"remote_policy"`
+	Countries       []string    `json:"countries"`
+	EmploymentType  string      `json:"employment_type"`
+	SalaryMin       *float64    `json:"salary_min"`
+	SalaryMax       *float64    `json:"salary_max"`
+	SalaryCurrency  *string     `json:"salary_currency"`
+	SalaryPeriod    *string     `json:"salary_period"`
+	PostedAt        *time.Time  `json:"posted_at"`
+	ClosedAt        *time.Time  `json:"closed_at"`
+	ContentHash     string      `json:"content_hash"`
+	DedupKey        string      `json:"dedup_key"`
+	CreatedAt       time.Time   `json:"created_at"`
+	UpdatedAt       time.Time   `json:"updated_at"`
+	Search          interface{} `json:"search"`
 }
 
 type MatchResult struct {
