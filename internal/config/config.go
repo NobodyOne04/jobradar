@@ -23,6 +23,7 @@ type Config struct {
 	AllowedHosts    []string      // ALLOWED_HOSTS: Host names the API answers to, default localhost,127.0.0.1,::1
 	MatcherURL      string        // MATCHER_URL, e.g. http://matcher:8000; empty: matching off
 	MatcherToken    string        // MATCHER_TOKEN, required (16+ chars) with MATCHER_URL
+	MLflowURL       string        // MLFLOW_URL, e.g. http://mlflow:5000; matching needs it and MATCHER_URL
 }
 
 // FromEnv reads the environment and returns every invalid setting at once.
@@ -68,6 +69,7 @@ func parse(getenv func(string) string) (Config, error) {
 		errs = append(errs, errors.New("ALLOWED_HOSTS must list at least one host"))
 	}
 	c.MatcherURL = get("MATCHER_URL", "")
+	c.MLflowURL = get("MLFLOW_URL", "")
 	c.MatcherToken = getenv("MATCHER_TOKEN")
 	if c.MatcherURL != "" && len(c.MatcherToken) < 16 {
 		errs = append(errs, errors.New("MATCHER_TOKEN must be set (16+ characters) when MATCHER_URL is"))

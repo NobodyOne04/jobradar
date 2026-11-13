@@ -79,6 +79,30 @@ The file name is the profile name. Each import that changes something adds a new
 does nothing. The API has the same: `POST /api/v1/profiles {"name":"anna"}`, then
 `POST /api/v1/profiles/1/revisions` with the JSON document, `GET .../revisions/latest`.
 
+## Matching
+
+Jobs are scored against your profile by the matcher, with the model version that MLflow's
+`champion` alias points to ([ADR 0010](docs/adr/0010-matching-mlflow-model-lifecycle.adr)).
+On a fresh install there is none yet, and matching waits (`/readyz` says `"champion":"none"`):
+
+```sh
+docker compose run --rm matcher-train train --from-defaults        # registers version 1
+docker compose run --rm matcher-train promote 1 --reason "first model"
+```
+
+Within a minute the backend picks it up and scores every open job, then each new or changed
+one (`/readyz` shows the champion; `jobradar_matching_pending_jobs` in `/metrics` counts what
+is left). Results are kept per model version, so a rollback is instant:
+
+```sh
+docker compose run --rm matcher-train models                       # * marks the champion
+docker compose run --rm matcher-train promote 1 --reason "v2 ranks remote jobs too low" --force
+curl localhost:8080/api/v1/models/activations                      # every change, with reasons
+```
+
+The MLflow UI (http://localhost:5001) shows each version's runs and metrics; moving the alias
+there works too, but skips the eval gate.
+
 ## Track applications
 
 Each job has a status for your profile ([ADR 0008](docs/adr/0008-application-tracking.adr)):

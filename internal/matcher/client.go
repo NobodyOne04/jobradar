@@ -98,12 +98,14 @@ type Client struct {
 	BaseWait time.Duration // first backoff; doubles, plus jitter
 }
 
-// New returns a client with the ADR 0004 defaults: 30 s per batch, 3 attempts.
+// New returns a client with 3 attempts and 2 minutes per batch. ADR 0004 said 30 s, but a
+// batch of 50 new, long postings embeds about a thousand sentences on one CPU thread and took
+// 32 s in the first full-system run; a timeout there wastes the work and retries it.
 func New(baseURL, token string) *Client {
 	return &Client{
 		BaseURL:  strings.TrimRight(baseURL, "/"),
 		Token:    token,
-		HTTP:     &http.Client{Timeout: 30 * time.Second},
+		HTTP:     &http.Client{Timeout: 2 * time.Minute},
 		Attempts: 3,
 		BaseWait: time.Second,
 	}

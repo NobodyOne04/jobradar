@@ -58,6 +58,41 @@ type Job struct {
 	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
+type MatchResult struct {
+	ID                int64           `json:"id"`
+	JobID             int64           `json:"job_id"`
+	ProfileRevisionID int64           `json:"profile_revision_id"`
+	ModelVersionID    int64           `json:"model_version_id"`
+	JobContentHash    string          `json:"job_content_hash"`
+	Score             int16           `json:"score"`
+	Band              string          `json:"band"`
+	Confidence        string          `json:"confidence"`
+	Completeness      float32         `json:"completeness"`
+	HardConstraints   string          `json:"hard_constraints"`
+	Details           json.RawMessage `json:"details"`
+	LatencyMs         *int32          `json:"latency_ms"`
+	CreatedAt         time.Time       `json:"created_at"`
+}
+
+type ModelActivation struct {
+	ID             int64     `json:"id"`
+	ModelVersionID int64     `json:"model_version_id"`
+	PreviousID     *int64    `json:"previous_id"`
+	Reason         *string   `json:"reason"`
+	Gate           *string   `json:"gate"`
+	ObservedAt     time.Time `json:"observed_at"`
+}
+
+type ModelVersion struct {
+	ID             int64           `json:"id"`
+	Version        string          `json:"version"`
+	MlflowRunID    string          `json:"mlflow_run_id"`
+	MatcherVersion *string         `json:"matcher_version"`
+	Metrics        json.RawMessage `json:"metrics"`
+	Tags           json.RawMessage `json:"tags"`
+	FirstSeenAt    time.Time       `json:"first_seen_at"`
+}
+
 type ProfileRevision struct {
 	ID            int64           `json:"id"`
 	ProfileID     int64           `json:"profile_id"`

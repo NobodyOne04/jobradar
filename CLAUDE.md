@@ -56,6 +56,10 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/matcher/`: the matcher client (`Match` in batches of 50 with retries, `Version`,
   `Status`, `CheckVersion`); contract tests validate its requests and recorded real responses
   (`testdata/`) against the pinned spec; re-record them when the contract changes
+- `internal/matching/`: `Registry` (MLflow REST: the `champion` alias and its run),
+  `Loop` (follow the champion, record activations, match pending jobs in batches of 50,
+  breaker: 5 failures pause 1 min; item-level rejects are skipped per version);
+  `internal/api/models.go`: /api/v1/models, /api/v1/models/activations
 - `contracts/`: the pinned matcher: `MATCHER_REF` (commit SHA, no tags yet),
   `MATCHER_VERSION` (its pyproject version), `matcher.openapi.yaml` (its contract). Only
   `scripts/pin-matcher.sh` writes them; never edit by hand. `contracts/embed.go` embeds them.
@@ -72,6 +76,8 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - Errors to clients are problem+json and never carry internal error text (DB errors,
   panics): log the detail with the `request_id`, return a short title.
 - Pass `r.Context()` to every DB/HTTP call: the request deadline relies on it.
+- Results are keyed by (job, profile revision, model version, job content hash) and never
+  deleted: a rollback must not recompute. The backend never moves the champion; MLflow does.
 - The API has no auth (localhost only, Q2), so `withLocalOnly` refuses any Host outside
   `ALLOWED_HOSTS` (DNS rebinding) and any foreign `Origin` (CSRF from the browser). Keep it
   in front of every route; a new non-local caller needs its host added there.

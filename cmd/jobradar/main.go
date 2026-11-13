@@ -27,6 +27,7 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/ingest/himalayas"
 	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
 	"github.com/NobodyOne04/jobradar/internal/matcher"
+	"github.com/NobodyOne04/jobradar/internal/matching"
 	"github.com/NobodyOne04/jobradar/internal/profiles"
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
@@ -111,6 +112,16 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	// Startup check (ADR 0001): an incompatible matcher is logged loudly; the backend still runs.
 	log.Info("matcher", "status", matcherStatus(ctx), "pinned", contracts.MatcherVersion)
 
+	// The matching loop (ADR 0010) needs both the matcher and MLflow.
+	var loop *matching.Loop
+	if matcherClient != nil && cfg.MLflowURL != "" {
+		loop = &matching.Loop{
+			Pool: st.Pool, Registry: matching.NewRegistry(cfg.MLflowURL), Matcher: matcherClient,
+			Pinned: contracts.MatcherVersion, Log: log,
+			FollowEvery: time.Minute, MatchEvery: 30 * time.Second, MaxBatches: 20,
+		}
+	}
+
 	ready := func(ctx context.Context) (map[string]string, error) {
 		if err := st.Pool.Ping(ctx); err != nil {
 			log.Warn("database ping failed", "error", err)
@@ -125,7 +136,14 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 			return nil, fmt.Errorf("schema at version %d, binary expects %d: run `jobradar migrate up`", current, latest)
 		}
 		// Reported, never failed on: without the matcher, ingestion and the API still work.
-		return map[string]string{"matcher": matcherStatus(ctx)}, nil
+		info := map[string]string{"matcher": matcherStatus(ctx), "matching": "disabled"}
+		if loop != nil {
+			info["matching"] = "on"
+			for k, v := range loop.State() {
+				info[k] = v
+			}
+		}
+		return info, nil
 	}
 
 	queries := store.New(st.Pool)
@@ -153,14 +171,20 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	sources := &api.Sources{Queries: queries, Scheduler: scheduler, Log: log, Background: ctx}
 	profileAPI := &api.Profiles{Queries: queries, Service: &profiles.Service{Pool: st.Pool}, Log: log}
 	applicationAPI := &api.Applications{Queries: queries, Service: &applications.Service{Pool: st.Pool}, Log: log}
+	modelAPI := &api.Models{Queries: queries, Log: log}
 
 	var background sync.WaitGroup
 	background.Go(func() { scheduler.Run(ctx) })
+	if loop != nil {
+		background.Go(func() { loop.Run(ctx) })
+	} else {
+		log.Info("matching off: set MATCHER_URL and MLFLOW_URL to turn it on")
+	}
 
 	srv := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: api.NewHandler(log, ready, cfg.RequestTimeout, cfg.AllowedHosts,
-			sources.Register, profileAPI.Register, applicationAPI.Register),
+			sources.Register, profileAPI.Register, applicationAPI.Register, modelAPI.Register),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      cfg.RequestTimeout + 5*time.Second, // backstop behind the per-request deadline
 	}
