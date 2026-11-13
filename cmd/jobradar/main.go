@@ -19,6 +19,7 @@ import (
 
 	"github.com/NobodyOne04/jobradar/contracts"
 	"github.com/NobodyOne04/jobradar/internal/api"
+	"github.com/NobodyOne04/jobradar/internal/applications"
 	"github.com/NobodyOne04/jobradar/internal/config"
 	"github.com/NobodyOne04/jobradar/internal/ingest"
 	"github.com/NobodyOne04/jobradar/internal/ingest/ashby"
@@ -142,6 +143,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	}
 	sources := &api.Sources{Queries: queries, Scheduler: scheduler, Log: log, Background: ctx}
 	profileAPI := &api.Profiles{Queries: queries, Service: &profiles.Service{Pool: st.Pool}, Log: log}
+	applicationAPI := &api.Applications{Queries: queries, Service: &applications.Service{Pool: st.Pool}, Log: log}
 
 	var background sync.WaitGroup
 	background.Go(func() { scheduler.Run(ctx) })
@@ -149,7 +151,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 	srv := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: api.NewHandler(log, ready, cfg.RequestTimeout, cfg.AllowedHosts,
-			sources.Register, profileAPI.Register),
+			sources.Register, profileAPI.Register, applicationAPI.Register),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      cfg.RequestTimeout + 5*time.Second, // backstop behind the per-request deadline
 	}

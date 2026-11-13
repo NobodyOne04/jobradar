@@ -241,6 +241,11 @@ func isJSONObject(raw json.RawMessage) bool {
 	return json.Unmarshal(raw, &m) == nil && m != nil
 }
 
+func isForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

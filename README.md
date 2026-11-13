@@ -79,6 +79,25 @@ The file name is the profile name. Each import that changes something adds a new
 does nothing. The API has the same: `POST /api/v1/profiles {"name":"anna"}`, then
 `POST /api/v1/profiles/1/revisions` with the JSON document, `GET .../revisions/latest`.
 
+## Track applications
+
+Each job has a status for your profile ([ADR 0008](docs/adr/0008-application-tracking.adr)):
+`saved → applied → interview → offer`, or `rejected` / `archived` from anywhere. A job you
+have not touched is `discovered`. Every change is logged with its time and an optional note.
+
+```sh
+curl -X PUT localhost:8080/api/v1/applications/42 -d '{"status":"applied","note":"sent CV"}'
+curl -X PUT localhost:8080/api/v1/applications/42 \
+  -d '{"status":"interview","occurred_at":"2026-11-20T14:00:00Z"}'   # backdate a change
+curl -X PUT localhost:8080/api/v1/applications/42 -d '{"status":"saved","force":true}'  # undo a step
+curl localhost:8080/api/v1/applications?status=interview
+curl localhost:8080/api/v1/applications/42/events
+curl localhost:8080/api/v1/labels/export > labels.jsonl   # for retraining the matcher
+```
+
+Repeating a status without a note changes nothing. Moving backwards needs `"force": true`.
+With several profiles, add `?profile_id=` (or `"profile_id"` in the body).
+
 ## Back up and restore
 
 Everything that matters is in two volumes: `pgdata` (the `jobradar` and `mlflow` databases)

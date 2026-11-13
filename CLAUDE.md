@@ -37,6 +37,9 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/profiles/`: schema validation (`Validate`, errors as JSON paths), revisions
   (`AddRevision`: idempotent via jsonb equality, numbered under a row lock), YAML import;
   `internal/api/profiles.go`: /api/v1/profiles
+- `internal/applications/`: `Transition` (all status rules in one function) and `Service.Set`
+  (status + event in one tx, idempotent); `internal/api/applications.go`: /api/v1/applications,
+  /api/v1/labels/export (personal data: never logged)
 - `docs/api/profile.schema.json`: the profile contract, embedded by `docs/api/embed.go`
   (package `apidocs`); a schema change means a new `schema_version`, never an edit of v1
 - `profiles/example.yaml`: a fictional profile; real ones (`profiles/*.yaml`) are git-ignored

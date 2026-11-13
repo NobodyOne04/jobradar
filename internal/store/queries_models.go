@@ -9,6 +9,26 @@ import (
 	"time"
 )
 
+type Application struct {
+	ID        int64     `json:"id"`
+	JobID     int64     `json:"job_id"`
+	ProfileID int64     `json:"profile_id"`
+	Status    string    `json:"status"`
+	Notes     string    `json:"notes"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type ApplicationEvent struct {
+	ID            int64     `json:"id"`
+	ApplicationID int64     `json:"application_id"`
+	FromStatus    *string   `json:"from_status"`
+	ToStatus      string    `json:"to_status"`
+	Note          *string   `json:"note"`
+	Forced        bool      `json:"forced"`
+	OccurredAt    time.Time `json:"occurred_at"`
+}
+
 type CandidateProfile struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
