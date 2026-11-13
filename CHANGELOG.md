@@ -28,6 +28,7 @@
 - Job ingestion: sources API, scheduled and manual syncs with retries and rate limits, idempotent upserts, closing of vanished postings, cross-source dedup, Greenhouse adapter
 
 ### Changed
+- Matcher pinned to 0.3.2 (a2d7178): location precision (boilerplate "worldwide" no longer opens a job; the location field wins over regions in the text; cities and US states known)
 - Matcher pinned to 0.3.1 (1373865): skills rule from matcher ADR 0005, relevance-weighted scoring defaults, train/eval use the image's embedding model
 - Matcher re-pinned to 822957e (0.2.1: `/metrics` needs the token, model versions carry their eval data); compose passes `MATCHER_REF` as the image's `GIT_COMMIT`, so each model version names the matcher commit
 - Matcher client timeout 2 minutes per batch (ADR 0004 wording updated)
