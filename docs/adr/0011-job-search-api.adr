@@ -1,0 +1,77 @@
+# 0011. Job search API: jobs with their match and application status, keyset pages
+
+- Status: Accepted
+- Date: 2026-11-13
+
+One resource, `/api/v1/jobs`, answers "which jobs should I look at": each open job with its
+match against your profile and your application status, filtered with Postgres full-text
+search and paged with a keyset cursor. There is no separate `/matches` resource.
+
+## Technical details
+
+**Problem.** SPEC Phase 4 asks for a job discovery API, match results, the application
+lifecycle and search with filters. Jobs, match results (ADR 0010) and applications (ADR 0008)
+are stored, but nothing lets you browse them. The ARCHITECTURE sketch had both `/jobs` and
+`/matches`; a match is always about a job, so one resource with the match inside avoids two
+ways to list the same thing.
+
+**`GET /api/v1/jobs`**, list items without the description (it can be 20 KB per job):
+```
+id, title, company_name, location_text, remote_policy, employment_type,
+salary {min, max, currency, period} | null, posted_at,
+sources [{kind, url, attribution}],         -- Himalayas: attribution "via Himalayas" (terms)
+match {score, band, confidence, completeness, hard_constraints, model_version, stale} | null,
+application {status}                        -- "discovered" when untouched
+```
+
+Query parameters, all optional:
+
+| Param | Meaning |
+|---|---|
+| `q` | full-text search over title, company and description (Postgres `websearch_to_tsquery`, English) |
+| `band` | one or more of strong, good, weak, excluded (repeat the param). **Default: all but excluded**, which failed one of your hard constraints |
+| `min_score` | 0-100 |
+| `remote` | remote, hybrid, onsite, unknown |
+| `source` | greenhouse, lever, ashby, himalayas |
+| `status` | application status, including `discovered` |
+| `posted_after` | RFC 3339 time |
+| `sort` | `score` (default: score, then newest), `posted`, `updated` |
+| `cursor`, `limit` | keyset page; limit 1-100, default 25 |
+| `profile_id` | default: your only profile (as in ADR 0008) |
+
+- **Which match.** The result of the champion version for the profile's current revision
+  and the job's current content. If there is none yet, the newest result of any version or
+  older content, with `stale: true` (ADR 0010). If there is none at all, `match` is null:
+  the job is pending, and with `sort=score` it comes after scored jobs, never mixed in.
+- **Search.** A generated `tsvector` column on `jobs` (title weight A, company B, description
+  C) with a GIN index; results matching `q` are ordered by the chosen sort, not by text rank,
+  so paging stays stable. Postgres only: no search engine (SPEC §13).
+- **Paging.** The cursor is an opaque, URL-safe token of the last item's sort key and id.
+  The next page continues after it, so new jobs arriving between pages neither repeat nor
+  shift items, unlike offset paging. A cursor from another sort or filter set is rejected
+  (422).
+
+**`GET /api/v1/jobs/{id}`**: everything about one job, open or closed:
+- the job with `description_text`, all its postings (`sources`, with URLs and attribution)
+- `match`: the same choice as above, plus `dimensions`, `skills` (matched, transferable,
+  missing) and `explanations` from the stored result
+- `application` with its `events` (ADR 0008)
+
+**Performance.** One query per page: a `LATERAL` subquery picks each job's match
+(`match_results` is indexed on job, revision and version), a `LEFT JOIN` adds the
+application. At the expected 10k-50k jobs this needs no materialized view; a migration adds
+the `tsvector` column, its GIN index and an index for the default sort.
+
+**Privacy.** The API serves your profile's results to you on localhost (ADR 0010 guard); the
+explanations mention your skills and salary floor, so responses are never logged.
+
+## Technologies and alternatives
+- Involved: Postgres full-text search (`tsvector`, GIN, `websearch_to_tsquery`), sqlc.
+- Alternatives:
+  - A separate `/matches` resource: the same jobs listed twice, with two filter sets to keep
+    in sync.
+  - Offset pagination: simpler, but pages shift as jobs arrive every sync.
+  - `ILIKE` search: no index use on long descriptions, no stemming ("pipelines" vs
+    "pipeline").
+  - Elasticsearch or Meilisearch: another service to run for a few thousand searches a day.
+  - Ranking by text relevance: unstable pages and less useful than your match score.

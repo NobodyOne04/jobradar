@@ -45,7 +45,8 @@ GET  /healthz     → process up          GET /readyz → embedding model and bu
 - Batching: the backend's matching loop takes up to 50 pending jobs per request (see
   [0007](0007-matching-orchestration-model-versions.adr)). A job that fails validation is
   returned as an item-level error, so one bad job does not fail the whole batch.
-- Timeouts and retries: a 30 s client timeout per batch. Retries on connection errors and
+- Timeouts and retries: a 2 min client timeout per batch (30 s was planned; a first batch of
+  50 new postings took 32 s to embed on one CPU thread, changed 2026-11-13). Retries on connection errors and
   503, 3 attempts with exponential backoff and jitter. No retry on 4xx.
 - After 5 consecutive failed batches, the matching loop pauses for 1 minute (a simple
   circuit breaker). Ingestion and the API are unaffected. Unmatched jobs show

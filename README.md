@@ -103,6 +103,27 @@ curl localhost:8080/api/v1/models/activations                      # every chang
 The MLflow UI (http://localhost:5001) shows each version's runs and metrics; moving the alias
 there works too, but skips the eval gate.
 
+## Find jobs
+
+Open jobs, best match first, with your application status
+([ADR 0011](docs/adr/0011-job-search-api.adr)):
+
+```sh
+curl 'localhost:8080/api/v1/jobs'                                 # 25 per page, by score
+curl 'localhost:8080/api/v1/jobs?q=data+engineer&remote=remote&min_score=60'
+curl 'localhost:8080/api/v1/jobs?band=strong&band=good&sort=posted'
+curl 'localhost:8080/api/v1/jobs?status=discovered&source=lever'
+curl 'localhost:8080/api/v1/jobs?cursor=<next_cursor from the previous page>'
+curl localhost:8080/api/v1/jobs/42        # description, why it matched, your history
+```
+
+Filters: `q` (full-text: title, company, description), `band` (repeatable), `min_score`,
+`remote`, `source`, `status` (incl. `discovered`), `posted_after`, `sort` (score, posted,
+updated), `limit` (1-100). Jobs that failed one of your hard constraints are hidden unless you
+ask for `band=excluded`. A job not scored yet shows `match: null` (after the scored ones); a
+result from an older model or profile shows `"stale": true` until it is re-scored. Jobs from
+Himalayas carry `"attribution": "via Himalayas"`: keep it, and apply through their link.
+
 ## Track applications
 
 Each job has a status for your profile ([ADR 0008](docs/adr/0008-application-tracking.adr)):

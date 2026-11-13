@@ -56,6 +56,8 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/matcher/`: the matcher client (`Match` in batches of 50 with retries, `Version`,
   `Status`, `CheckVersion`); contract tests validate its requests and recorded real responses
   (`testdata/`) against the pinned spec; re-record them when the contract changes
+- `internal/api/jobs.go`: /api/v1/jobs (one SearchJobs query: LATERAL best match, keyset on
+  (k1, k2, id), cursor tied to a hash of the filters) and /api/v1/jobs/{id}
 - `internal/matching/`: `Registry` (MLflow REST: the `champion` alias and its run),
   `Loop` (follow the champion, record activations, match pending jobs in batches of 50,
   breaker: 5 failures pause 1 min; item-level rejects are skipped per version);

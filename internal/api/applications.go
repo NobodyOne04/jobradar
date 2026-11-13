@@ -30,8 +30,13 @@ func (a *Applications) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/labels/export", a.export)
 }
 
-// profileID is ?profile_id=, or the only profile when there is exactly one.
 func (a *Applications) profileID(w http.ResponseWriter, r *http.Request, fromBody int64) (int64, bool) {
+	return resolveProfile(w, r, a.Queries, func(err error) { a.internal(w, r, err) }, fromBody)
+}
+
+// resolveProfile is ?profile_id= (or one from the body), else the only profile when there is
+// exactly one. It writes the problem response itself when it returns false.
+func resolveProfile(w http.ResponseWriter, r *http.Request, q *store.Queries, internal func(error), fromBody int64) (int64, bool) {
 	if fromBody > 0 {
 		return fromBody, true
 	}
@@ -43,10 +48,10 @@ func (a *Applications) profileID(w http.ResponseWriter, r *http.Request, fromBod
 		}
 		return id, true
 	}
-	ids, err := a.Queries.ProfileIDs(r.Context())
+	ids, err := q.ProfileIDs(r.Context())
 	switch {
 	case err != nil:
-		a.internal(w, r, err)
+		internal(err)
 		return 0, false
 	case len(ids) == 0:
 		WriteProblem(w, http.StatusUnprocessableEntity, "no profile", "import a profile first")
