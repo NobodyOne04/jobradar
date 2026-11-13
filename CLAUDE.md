@@ -48,9 +48,12 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
   start only)
 - `migrations/`: goose SQL files `NNNNN_name.sql`, embedded in the binary; never edit an
   applied one, add a new file
+- `internal/matcher/`: the matcher client (`Match` in batches of 50 with retries, `Version`,
+  `Status`, `CheckVersion`); contract tests validate its requests and recorded real responses
+  (`testdata/`) against the pinned spec; re-record them when the contract changes
 - `contracts/`: the pinned matcher: `MATCHER_REF` (commit SHA, no tags yet),
   `MATCHER_VERSION` (its pyproject version), `matcher.openapi.yaml` (its contract). Only
-  `scripts/pin-matcher.sh` writes them; never edit by hand.
+  `scripts/pin-matcher.sh` writes them; never edit by hand. `contracts/embed.go` embeds them.
 - `docs/adr/`: backend and cross-service ADRs (`NNNN-title.adr`), index in its README;
   matcher-internal ADRs live in `jobradar-matcher/docs/adr/`
 
@@ -81,5 +84,6 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - Never `docker compose down -v` on the real stack: it deletes the databases and models.
 - CI is disabled (`gh workflow disable CI`, 2026-11-13) until the coding phases are done.
   Before every PR, run its checks locally: gofmt, `go vet`, golangci-lint, `go test -race`,
-  govulncheck, `sqlc diff`. Re-enable with `gh workflow enable CI`.
+  govulncheck, `sqlc diff`, `docker build .` (the binary embeds `docs/api` and `contracts`:
+  a new embedded folder must be copied in the Dockerfile and not ignored in .dockerignore). Re-enable with `gh workflow enable CI`.
 - Candidate data is personal: never hardcode it in the matching engine, never log it.

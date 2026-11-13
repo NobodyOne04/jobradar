@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-// Readiness reports whether a dependency is ready; nil means ready.
-type Readiness func(ctx context.Context) error
+// Readiness reports whether the backend can serve (nil error) and, in info, the state of
+// dependencies it works without (the matcher: matching pauses, the API does not).
+type Readiness func(ctx context.Context) (info map[string]string, err error)
 
 // NewHandler builds the router with all middleware applied. allowedHosts are the Host
 // names the API answers to (see withLocalOnly); register adds resource routes.
@@ -23,12 +24,17 @@ func NewHandler(log *slog.Logger, ready Readiness, timeout time.Duration, allowe
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
-		if err := ready(r.Context()); err != nil {
+		info, err := ready(r.Context())
+		if err != nil {
 			log.Warn("not ready", "request_id", RequestID(r.Context()), "reason", err.Error())
 			WriteProblem(w, http.StatusServiceUnavailable, "not ready", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+		body := map[string]string{"status": "ready"}
+		for k, v := range info {
+			body[k] = v
+		}
+		writeJSON(w, http.StatusOK, body)
 	})
 	// Anything unmatched gets a problem+json 404 instead of ServeMux's plain text.
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {

@@ -30,7 +30,7 @@ func get(h http.Handler, path string, header http.Header) *httptest.ResponseReco
 	return rec
 }
 
-func readyOK(context.Context) error { return nil }
+func readyOK(context.Context) (map[string]string, error) { return nil, nil }
 
 func TestHealthz(t *testing.T) {
 	h, _ := handler(readyOK)
@@ -46,12 +46,24 @@ func TestReadyz(t *testing.T) {
 		t.Fatalf("ready: got %d", rec.Code)
 	}
 
-	h, _ = handler(func(context.Context) error { return errors.New("database unreachable") })
+	h, _ = handler(func(context.Context) (map[string]string, error) {
+		return nil, errors.New("database unreachable")
+	})
 	rec := get(h, "/readyz", nil)
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("not ready: got %d", rec.Code)
 	}
 	assertProblem(t, rec, http.StatusServiceUnavailable)
+}
+
+func TestReadyzReportsOptionalDependencies(t *testing.T) {
+	h, _ := handler(func(context.Context) (map[string]string, error) {
+		return map[string]string{"matcher": "unreachable"}, nil
+	})
+	rec := get(h, "/readyz", nil)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"matcher":"unreachable"`) {
+		t.Errorf("got %d %s", rec.Code, rec.Body)
+	}
 }
 
 func TestUnknownRouteIsProblemJSON(t *testing.T) {

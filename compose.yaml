@@ -34,6 +34,8 @@ services:
       SYNC_INTERVAL: ${SYNC_INTERVAL:-6h}
       SYNC_CONCURRENCY: ${SYNC_CONCURRENCY:-4}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,::1}
+      MATCHER_URL: http://matcher:8000
+      MATCHER_TOKEN: ${MATCHER_TOKEN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,6 +65,8 @@ services:
       MATCHER_TOKEN: ${MATCHER_TOKEN:?set MATCHER_TOKEN in .env (16+ characters)}
       MLFLOW_TRACKING_URI: http://mlflow:5000
       LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - matcher-cache:/cache  # downloaded model versions: matching survives MLflow outages
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"]
       interval: 10s
@@ -100,3 +104,4 @@ services:
 volumes:
   pgdata:
   mlartifacts:
+  matcher-cache:
