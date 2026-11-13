@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+type CandidateProfile struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Job struct {
 	ID              int64      `json:"id"`
 	Title           string     `json:"title"`
@@ -30,6 +36,15 @@ type Job struct {
 	DedupKey        string     `json:"dedup_key"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
+}
+
+type ProfileRevision struct {
+	ID            int64           `json:"id"`
+	ProfileID     int64           `json:"profile_id"`
+	Revision      int32           `json:"revision"`
+	SchemaVersion int32           `json:"schema_version"`
+	Data          json.RawMessage `json:"data"`
+	CreatedAt     time.Time       `json:"created_at"`
 }
 
 type Source struct {

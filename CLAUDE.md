@@ -11,6 +11,7 @@ go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run   # CI
 govulncheck ./...                                  # CI
 go run ./cmd/jobradar migrate up|down|status       # needs DATABASE_URL (see .env.example)
 go run ./cmd/jobradar serve                        # :8080; /healthz, /readyz, /api/v1/sources
+go run ./cmd/jobradar profile import profiles/<name>.yaml   # new revision unless unchanged
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate   # after editing queries or migrations
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 diff       # local check: generated code is current
 cp .env.example .env && docker compose up -d --build   # whole system; README "Run it"
@@ -33,6 +34,12 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
   `HTTPClient` (rate limit, retries), normalization and dedup keys; one subpackage per
   source (`greenhouse/`, `lever/`, `ashby/`, `himalayas/`), each with recorded `testdata/` and its API terms in the
   package doc
+- `internal/profiles/`: schema validation (`Validate`, errors as JSON paths), revisions
+  (`AddRevision`: idempotent via jsonb equality, numbered under a row lock), YAML import;
+  `internal/api/profiles.go`: /api/v1/profiles
+- `docs/api/profile.schema.json`: the profile contract, embedded by `docs/api/embed.go`
+  (package `apidocs`); a schema change means a new `schema_version`, never an edit of v1
+- `profiles/example.yaml`: a fictional profile; real ones (`profiles/*.yaml`) are git-ignored
 - `internal/testdb/`: throwaway migrated Postgres for tests
 - `compose.yaml`: postgres, migrate (one-shot), backend, matcher (built from
   `${MATCHER_SRC:-../jobradar-matcher}`), mlflow; `Dockerfile`: backend (distroless, the

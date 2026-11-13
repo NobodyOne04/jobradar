@@ -6,6 +6,7 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY migrations ./migrations
+COPY docs/api ./docs/api
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /jobradar ./cmd/jobradar
 
 # Runtime: no shell, no package manager, non-root.
