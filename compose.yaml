@@ -58,6 +58,16 @@ services:
       timeout: 5s
       retries: 6
 
+  web:
+    build: ${WEB_SRC:-../jobradar-web}  # static UI + /api proxy, same origin as the API (ADR 0012)
+    image: jobradar-web:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
   matcher:
     build:
       context: ${MATCHER_SRC:-../jobradar-matcher}
