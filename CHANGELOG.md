@@ -9,6 +9,7 @@
 - Empty source and run lists are `[]` instead of `null`
 
 ### Added
+- Application tracking: statuses saved, applied, interview, offer, rejected, archived (none = discovered), an event log with backdating and notes, corrections with `force`, `/api/v1/applications` and `/api/v1/labels/export` (JSONL labels for retraining)
 - Matcher client: batches of up to 50, retries on 503 and connection errors, request IDs forwarded, startup version check against the pinned release, `/readyz` reports the matcher (`ok`, `unreachable`, `incompatible`, `disabled`) without failing; contract tests against the pinned OpenAPI with recorded real responses; matcher pinned to 0.2.1; compose: matcher cache volume
 - Candidate profiles: JSON Schema v1, immutable revisions, `jobradar profile import <file.yaml>` (idempotent), `/api/v1/profiles`, a fictional example profile
 - Himalayas adapter: saved searches with validated filters, 500-job cap reported as a partial run, expired jobs closed on every sync, Himalayas terms recorded
