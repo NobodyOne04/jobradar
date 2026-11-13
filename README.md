@@ -98,6 +98,14 @@ curl localhost:8080/api/v1/labels/export > labels.jsonl   # for retraining the m
 Repeating a status without a note changes nothing. Moving backwards needs `"force": true`.
 With several profiles, add `?profile_id=` (or `"profile_id"` in the body).
 
+## Monitoring
+
+`curl localhost:8080/metrics` (Prometheus text format, [ADR 0009](docs/adr/0009-observability.adr)):
+requests by route and status code, request latency, sync runs by source kind and status,
+postings by result (created, updated, unchanged, closed). Logs are JSON lines on stdout
+(`docker compose logs backend`), each with `ts`, `level`, `msg` and a `request_id` that the
+matcher's logs share.
+
 ## Back up and restore
 
 Everything that matters is in two volumes: `pgdata` (the `jobradar` and `mlflow` databases)

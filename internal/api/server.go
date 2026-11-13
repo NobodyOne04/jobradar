@@ -5,7 +5,12 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/NobodyOne04/jobradar/internal/metrics"
 )
 
 // Readiness reports whether the backend can serve (nil error) and, in info, the state of
@@ -20,6 +25,7 @@ func NewHandler(log *slog.Logger, ready Readiness, timeout time.Duration, allowe
 	for _, reg := range register {
 		reg(mux)
 	}
+	mux.Handle("GET /metrics", promhttp.Handler())
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -41,7 +47,7 @@ func NewHandler(log *slog.Logger, ready Readiness, timeout time.Duration, allowe
 		WriteProblem(w, http.StatusNotFound, "not found", "")
 	})
 
-	return withRequestLog(log, withLocalOnly(allowedHosts, withTimeout(timeout, mux)))
+	return withRequestLog(log, withLocalOnly(allowedHosts, withTimeout(timeout, withMetrics(mux))))
 }
 
 // withTimeout gives each request a deadline. Handlers pass r.Context() to the database and
@@ -51,5 +57,22 @@ func withTimeout(d time.Duration, next http.Handler) http.Handler {
 		ctx, cancel := context.WithTimeout(r.Context(), d)
 		defer cancel()
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// withMetrics records each request by its ServeMux pattern ("GET /api/v1/sources/{id}"), never
+// by raw path, so label values stay bounded. It wraps the mux directly: the mux sets
+// r.Pattern on the request it is given.
+func withMetrics(mux *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		start := time.Now()
+		mux.ServeHTTP(rec, r)
+		route := r.Pattern
+		if route == "" || route == "/" {
+			route = "unmatched"
+		}
+		metrics.HTTPRequests.WithLabelValues(route, strconv.Itoa(rec.status)).Inc()
+		metrics.HTTPDuration.WithLabelValues(route).Observe(time.Since(start).Seconds())
 	})
 }

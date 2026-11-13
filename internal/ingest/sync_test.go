@@ -13,8 +13,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 
 	"github.com/NobodyOne04/jobradar/internal/ingest"
+	"github.com/NobodyOne04/jobradar/internal/metrics"
 	"github.com/NobodyOne04/jobradar/internal/store"
 	"github.com/NobodyOne04/jobradar/internal/testdb"
 )
@@ -131,8 +133,16 @@ func TestSyncIsIdempotentAndTracksChanges(t *testing.T) {
 		"2": `{"title":"Analytics Engineer","location":"Berlin"}`,
 	})
 
+	runsBefore := testutil.ToFloat64(metrics.SyncRuns.WithLabelValues("greenhouse", "succeeded"))
+	createdBefore := testutil.ToFloat64(metrics.Postings.WithLabelValues("greenhouse", "created"))
 	if c := e.sync(t, e.srcA); c != (ingest.Counts{Fetched: 2, Created: 2}) {
 		t.Fatalf("first sync: %+v", c)
+	}
+	if got := testutil.ToFloat64(metrics.SyncRuns.WithLabelValues("greenhouse", "succeeded")) - runsBefore; got != 1 {
+		t.Errorf("sync runs metric +%v, want +1", got)
+	}
+	if got := testutil.ToFloat64(metrics.Postings.WithLabelValues("greenhouse", "created")) - createdBefore; got != 2 {
+		t.Errorf("created postings metric +%v, want +2", got)
 	}
 	if c := e.sync(t, e.srcA); c != (ingest.Counts{Fetched: 2, Unchanged: 2}) {
 		t.Fatalf("second sync must change nothing: %+v", c)
