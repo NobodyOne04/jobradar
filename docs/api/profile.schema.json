@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jobradar.local/schemas/profile/1",
+  "title": "Candidate profile, schema_version 1 (ADR 0006)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "seniority", "years_of_experience", "experience", "skills", "preferences"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "headline": { "$ref": "#/$defs/text" },
+    "seniority": { "enum": ["junior", "mid", "senior", "staff", "principal", "lead", "manager", "director"] },
+    "years_of_experience": { "type": "number", "minimum": 0, "maximum": 60 },
+    "experience": {
+      "type": "array", "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "company", "start"],
+        "properties": {
+          "title": { "$ref": "#/$defs/short" },
+          "company": { "$ref": "#/$defs/short" },
+          "start": { "$ref": "#/$defs/month" },
+          "end": { "$ref": "#/$defs/month" },
+          "responsibilities": { "$ref": "#/$defs/texts" },
+          "achievements": { "$ref": "#/$defs/texts" },
+          "skills": { "$ref": "#/$defs/names" }
+        }
+      }
+    },
+    "skills": {
+      "type": "array", "maxItems": 300,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "$ref": "#/$defs/short" },
+          "level": { "enum": ["basic", "intermediate", "advanced", "expert"] },
+          "years": { "type": "number", "minimum": 0, "maximum": 60 }
+        }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "employment_types": {
+          "type": "array", "uniqueItems": true,
+          "items": { "enum": ["full_time", "part_time", "contract", "internship"] }
+        },
+        "remote_only": { "type": "boolean" },
+        "locations": { "$ref": "#/$defs/names" },
+        "timezones": {
+          "description": "Allowed UTC offset range, in hours",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min_utc_offset", "max_utc_offset"],
+          "properties": {
+            "min_utc_offset": { "type": "number", "minimum": -12, "maximum": 14 },
+            "max_utc_offset": { "type": "number", "minimum": -12, "maximum": 14 }
+          }
+        },
+        "salary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "currency", "period"],
+          "properties": {
+            "min": { "type": "number", "exclusiveMinimum": 0 },
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+            "period": { "enum": ["year", "month", "day", "hour"] }
+          }
+        },
+        "hard_constraints": {
+          "description": "Which preferences are gates; the others are soft",
+          "type": "array", "uniqueItems": true,
+          "items": { "enum": ["employment_types", "remote_only", "locations", "timezones", "salary"] }
+        }
+      }
+    },
+    "extra": { "type": "object", "maxProperties": 50 }
+  },
+  "$defs": {
+    "short": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "texts": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/text" } },
+    "names": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/short" } },
+    "month": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+  }
+}

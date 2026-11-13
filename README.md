@@ -63,6 +63,22 @@ curl localhost:8080/api/v1/sources/1/runs                # outcome: fetched, cre
 curl -X PATCH localhost:8080/api/v1/sources/1 -d '{"enabled":false}'
 ```
 
+## Your profile
+
+The matcher compares jobs with a candidate profile you write from your CV
+([ADR 0006](docs/adr/0006-candidate-profiles.adr), schema in `docs/api/profile.schema.json`).
+
+```sh
+cp profiles/example.yaml profiles/anna.yaml      # git-ignored: only example.yaml is tracked
+$EDITOR profiles/anna.yaml
+docker compose run --rm -v "$PWD/profiles:/profiles:ro" migrate profile import /profiles/anna.yaml
+```
+
+The file name is the profile name. Each import that changes something adds a new revision
+(old ones are kept, so past match results stay explainable); importing an unchanged file
+does nothing. The API has the same: `POST /api/v1/profiles {"name":"anna"}`, then
+`POST /api/v1/profiles/1/revisions` with the JSON document, `GET .../revisions/latest`.
+
 ## Back up and restore
 
 Everything that matters is in two volumes: `pgdata` (the `jobradar` and `mlflow` databases)

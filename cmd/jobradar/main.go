@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -22,10 +24,11 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
 	"github.com/NobodyOne04/jobradar/internal/ingest/himalayas"
 	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
+	"github.com/NobodyOne04/jobradar/internal/profiles"
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
 
-const usage = "usage: jobradar serve | migrate up|down|status | healthcheck"
+const usage = "usage: jobradar serve | migrate up|down|status | healthcheck | profile import <file.yaml>"
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -66,6 +69,11 @@ func run(args []string) error {
 			return errors.New(usage)
 		}
 		return migrate(ctx, log, st, args[1])
+	case "profile":
+		if len(args) != 3 || args[1] != "import" {
+			return errors.New(usage)
+		}
+		return importProfile(ctx, log, st, args[2])
 	default:
 		return errors.New(usage)
 	}
@@ -111,13 +119,15 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 		Log:         log,
 	}
 	sources := &api.Sources{Queries: queries, Scheduler: scheduler, Log: log, Background: ctx}
+	profileAPI := &api.Profiles{Queries: queries, Service: &profiles.Service{Pool: st.Pool}, Log: log}
 
 	var background sync.WaitGroup
 	background.Go(func() { scheduler.Run(ctx) })
 
 	srv := &http.Server{
-		Addr:              cfg.HTTPAddr,
-		Handler:           api.NewHandler(log, ready, cfg.RequestTimeout, cfg.AllowedHosts, sources.Register),
+		Addr: cfg.HTTPAddr,
+		Handler: api.NewHandler(log, ready, cfg.RequestTimeout, cfg.AllowedHosts,
+			sources.Register, profileAPI.Register),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      cfg.RequestTimeout + 5*time.Second, // backstop behind the per-request deadline
 	}
@@ -189,6 +199,32 @@ func healthcheck(addr string) error {
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("not ready: %s", resp.Status)
+	}
+	return nil
+}
+
+// importProfile adds the YAML file as a revision of the profile named after the file
+// (profiles/anna.yaml -> "anna"). Only ids and revision numbers are printed, never content.
+func importProfile(ctx context.Context, log *slog.Logger, st *store.Store, path string) error {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	doc, err := profiles.FromYAML(src)
+	if err != nil {
+		return err
+	}
+	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	res, err := (&profiles.Service{Pool: st.Pool}).Import(ctx, name, doc)
+	if err != nil {
+		return err
+	}
+	if res.Created {
+		log.Info("profile revision created", "profile", name, "profile_id", res.Revision.ProfileID,
+			"revision", res.Revision.Revision)
+	} else {
+		log.Info("profile unchanged", "profile", name, "profile_id", res.Revision.ProfileID,
+			"revision", res.Revision.Revision)
 	}
 	return nil
 }

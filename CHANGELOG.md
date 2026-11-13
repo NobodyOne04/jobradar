@@ -9,6 +9,7 @@
 - Empty source and run lists are `[]` instead of `null`
 
 ### Added
+- Candidate profiles: JSON Schema v1, immutable revisions, `jobradar profile import <file.yaml>` (idempotent), `/api/v1/profiles`, a fictional example profile
 - Himalayas adapter: saved searches with validated filters, 500-job cap reported as a partial run, expired jobs closed on every sync, Himalayas terms recorded
 - Source config is validated when a source is created (Lever region, Himalayas filters)
 - Ashby adapter: salary from the compensation summary, workplace and employment type, all locations; unlisted postings skipped

@@ -2,6 +2,7 @@
 .github
 .env*
 docs
+!docs/api
 profiles
 labels
 deploy
