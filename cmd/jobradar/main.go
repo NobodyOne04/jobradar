@@ -51,7 +51,16 @@ func run(args []string) error {
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel})).
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: cfg.LogLevel,
+		// "ts", as in the matcher's logs (ADR 0009), so both read the same.
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if len(groups) == 0 && a.Key == slog.TimeKey {
+				a.Key = "ts"
+			}
+			return a
+		},
+	})).
 		With("service", "backend")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

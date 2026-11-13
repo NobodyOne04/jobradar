@@ -162,3 +162,22 @@ func TestLocalOnly(t *testing.T) {
 		})
 	}
 }
+
+func TestMetricsUseRoutePatterns(t *testing.T) {
+	h, _ := handler(readyOK)
+	get(h, "/healthz", nil)
+	get(h, "/no/such/path/12345", nil)
+	body := get(h, "/metrics", nil).Body.String()
+	for _, want := range []string{
+		`jobradar_http_requests_total{code="200",route="GET /healthz"}`,
+		`jobradar_http_requests_total{code="404",route="unmatched"}`,
+		`jobradar_http_request_duration_seconds_bucket{route="GET /healthz"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("metrics lack %s", want)
+		}
+	}
+	if strings.Contains(body, "12345") {
+		t.Error("a raw path leaked into metric labels")
+	}
+}

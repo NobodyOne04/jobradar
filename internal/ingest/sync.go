@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/NobodyOne04/jobradar/internal/metrics"
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
 
@@ -67,6 +68,12 @@ func (s *Syncer) SyncOn(ctx context.Context, db DB, src store.Source) (Counts, e
 		Updated: counts.Updated, Unchanged: counts.Unchanged, Closed: counts.Closed, Error: errText,
 	}); ferr != nil {
 		err = errors.Join(err, fmt.Errorf("finish run: %w", ferr))
+	}
+	metrics.SyncRuns.WithLabelValues(src.Kind, status).Inc()
+	for result, n := range map[string]int32{
+		"created": counts.Created, "updated": counts.Updated, "unchanged": counts.Unchanged, "closed": counts.Closed,
+	} {
+		metrics.Postings.WithLabelValues(src.Kind, result).Add(float64(n))
 	}
 	log.Info("sync finished", "status", status, "fetched", counts.Fetched, "created", counts.Created,
 		"updated", counts.Updated, "unchanged", counts.Unchanged, "closed", counts.Closed)
