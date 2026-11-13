@@ -65,6 +65,7 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `contracts/`: the pinned matcher: `MATCHER_REF` (commit SHA, no tags yet),
   `MATCHER_VERSION` (its pyproject version), `matcher.openapi.yaml` (its contract). Only
   `scripts/pin-matcher.sh` writes them; never edit by hand. `contracts/embed.go` embeds them.
+  `.env` repeats `MATCHER_VERSION` and `MATCHER_REF` for compose (image tag, `GIT_COMMIT` build arg).
 - `docs/adr/`: backend and cross-service ADRs (`NNNN-title.adr`), index in its README;
   matcher-internal ADRs live in `jobradar-matcher/docs/adr/`
 

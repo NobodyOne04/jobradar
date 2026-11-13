@@ -59,7 +59,10 @@ services:
       retries: 6
 
   matcher:
-    build: ${MATCHER_SRC:-../jobradar-matcher}
+    build:
+      context: ${MATCHER_SRC:-../jobradar-matcher}
+      args:
+        GIT_COMMIT: ${MATCHER_REF:-unknown}  # tagged on every model version it trains (matcher ADR 0004)
     image: jobradar-matcher:${MATCHER_VERSION:?set MATCHER_VERSION to the content of contracts/MATCHER_VERSION}
     restart: unless-stopped
     environment:

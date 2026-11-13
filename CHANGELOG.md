@@ -28,6 +28,7 @@
 - Job ingestion: sources API, scheduled and manual syncs with retries and rate limits, idempotent upserts, closing of vanished postings, cross-source dedup, Greenhouse adapter
 
 ### Changed
+- Matcher re-pinned to 822957e (0.2.1: `/metrics` needs the token, model versions carry their eval data); compose passes `MATCHER_REF` as the image's `GIT_COMMIT`, so each model version names the matcher commit
 - Matcher client timeout 2 minutes per batch (ADR 0004 wording updated)
 - ADR 0010: MLflow UI on host port 5001, psycopg 3, `--allowed-hosts` (as built in the compose PR)
 - CI workflow disabled until the coding phases are done; checks run locally
