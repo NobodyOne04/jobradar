@@ -7,5 +7,4 @@ profiles
 labels
 deploy
 scripts
-contracts
 **/*_test.go

@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/NobodyOne04/jobradar/contracts"
 	"github.com/NobodyOne04/jobradar/internal/api"
 	"github.com/NobodyOne04/jobradar/internal/config"
 	"github.com/NobodyOne04/jobradar/internal/ingest"
@@ -24,6 +25,7 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
 	"github.com/NobodyOne04/jobradar/internal/ingest/himalayas"
 	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
+	"github.com/NobodyOne04/jobradar/internal/matcher"
 	"github.com/NobodyOne04/jobradar/internal/profiles"
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
@@ -80,20 +82,40 @@ func run(args []string) error {
 }
 
 func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.Store) error {
-	ready := func(ctx context.Context) error {
+	var matcherClient *matcher.Client
+	if cfg.MatcherURL != "" {
+		matcherClient = matcher.New(cfg.MatcherURL, cfg.MatcherToken)
+	}
+	matcherStatus := func(ctx context.Context) string {
+		if matcherClient == nil {
+			return "disabled"
+		}
+		ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		status, detail := matcherClient.Status(ctx, contracts.MatcherVersion)
+		if detail != "" {
+			log.Warn("matcher", "status", status, "detail", detail)
+		}
+		return status
+	}
+	// Startup check (ADR 0001): an incompatible matcher is logged loudly; the backend still runs.
+	log.Info("matcher", "status", matcherStatus(ctx), "pinned", contracts.MatcherVersion)
+
+	ready := func(ctx context.Context) (map[string]string, error) {
 		if err := st.Pool.Ping(ctx); err != nil {
 			log.Warn("database ping failed", "error", err)
-			return errors.New("database unreachable") // no connection details to clients
+			return nil, errors.New("database unreachable") // no connection details to clients
 		}
 		current, latest, err := st.SchemaStatus(ctx)
 		if err != nil {
 			log.Warn("schema status failed", "error", err)
-			return errors.New("schema version unknown")
+			return nil, errors.New("schema version unknown")
 		}
 		if current != latest {
-			return fmt.Errorf("schema at version %d, binary expects %d: run `jobradar migrate up`", current, latest)
+			return nil, fmt.Errorf("schema at version %d, binary expects %d: run `jobradar migrate up`", current, latest)
 		}
-		return nil
+		// Reported, never failed on: without the matcher, ingestion and the API still work.
+		return map[string]string{"matcher": matcherStatus(ctx)}, nil
 	}
 
 	queries := store.New(st.Pool)
