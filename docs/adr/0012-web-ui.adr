@@ -1,0 +1,73 @@
+# 0012. Web UI: static HTML+JS in its own repo, served by nginx on the same origin as the API
+
+- Status: Accepted
+- Date: 2026-11-13
+
+A small browser UI over the existing API: browse matched jobs, read why one matched, set its
+application status. It lives in a third repo, `jobradar-web`, and is served by an nginx
+container that also proxies `/api`, so the backend and its local-only guard stay unchanged.
+
+## Technical details
+
+**Problem.** SPEC §13 rules out a *premature* frontend, and ARCHITECTURE said "no frontend".
+Now the API is done (ADR 0008, 0011), the stated need is daily use: scanning 25 jobs at a
+time with `curl` and `jq`, then reading descriptions and explanations, is slow. A UI is a
+client of the existing API; it adds no endpoint and no state.
+
+**Repo.** `NobodyOne04/jobradar-web` (private), cloned next to `jobradar` and
+`jobradar-matcher`. Not pinned like the matcher (ADR 0001): it has no contract of its own,
+only consumes ADR 0011 and 0008. Compose builds from whatever is checked out.
+
+**Stack.** Plain HTML, CSS and JavaScript (ES modules), no build step, no npm dependencies:
+- `index.html`: the job list. Filters: `q`, `band` (checkboxes, default all but excluded),
+  `remote`, `status`, `min_score`, `sort`. A "More" button follows `next_cursor`. Filters are
+  kept in the page URL (`?q=...`), so reload and back work.
+- `job.html?id=42`: one job: description, score, band, dimensions, skills
+  (matched/transferable/missing), explanations, sources with links, application history, and
+  status buttons (`saved`, `applied`, `interview`, `offer`, `rejected`, `archived`) with an
+  optional note. A backward move shows the 409 and offers "force" (ADR 0008).
+- `api.js`: `fetch` wrappers; problem+json errors are shown as their `title`.
+- `style.css`: one stylesheet.
+
+**Serving: same origin, no backend change.** `withLocalOnly` (`internal/api/localonly.go`)
+refuses a foreign `Origin` and any Host outside `ALLOWED_HOSTS`. A new compose service:
+```yaml
+  web:
+    build: ${WEB_SRC:-../jobradar-web}
+    image: jobradar-web:local
+    restart: unless-stopped
+    ports: ["127.0.0.1:3000:80"]
+    depends_on:
+      backend:
+        condition: service_healthy
+```
+Its `nginx.conf` serves the static files and proxies `/api/` to `http://backend:8080` with
+`proxy_set_header Host $http_host`. The browser at `http://localhost:3000` sends
+`Origin: http://localhost:3000`, and the backend sees `Host: localhost:3000`. The hostname
+`localhost` is allowed, and the Origin equals the Host, so the guard passes untouched. A
+browser on any other site is still refused, by the backend as before.
+- Only `/api/v1/*` is proxied; `/metrics`, `/healthz` and `/readyz` are not.
+- Access log off for `/api/` (search terms and notes are personal; SPEC privacy rule).
+- Headers: `Content-Security-Policy: default-src 'self'` (no inline script, no third-party
+  content), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
+
+**Untrusted text.** Titles and descriptions come from external job boards: the UI renders
+them with `textContent` only, never `innerHTML`. Links are rendered only for `http(s)` URLs.
+
+**Himalayas terms (§113).** Its jobs show "via Himalayas" next to their link, and "Apply"
+uses the stored `applicationLink` URL. The UI exports nothing.
+
+**Consequences.**
+- One more container and one more repo; `docker compose up` needs `../jobradar-web` (or
+  `WEB_SRC`).
+- No tests beyond a manual check: there is almost no logic, and a test runner would be the
+  first dependency. If the UI grows (state, many screens), revisit with Vite + TypeScript.
+- The API has no auth (Q2): the UI is as local as the API, 127.0.0.1 only.
+
+## Technologies and alternatives
+- Involved: nginx (`nginx:1.29-alpine` image), browser `fetch`, ES modules.
+- Alternatives:
+  - Vite + TypeScript or React: a build step and npm dependencies for three screens.
+  - The backend serves the files: couples the repos (embed or mount) and mixes UI into the Go binary.
+  - CORS with an `ALLOWED_ORIGINS` list: loosens the CSRF guard, for no gain over a proxy.
+  - Inside the `jobradar` repo: possible, but you asked for a separate repo.

@@ -4,11 +4,12 @@ Personal job intelligence platform: ingests remote job postings, matches them ag
 
 ## Getting the code
 
-The system lives in two repos, cloned side by side ([ADR 0001](docs/adr/0001-two-repos-pinned-matcher.adr)):
+The system lives in three repos, cloned side by side ([ADR 0001](docs/adr/0001-two-repos-pinned-matcher.adr)):
 
 ```sh
 git clone git@github.com:NobodyOne04/jobradar.git
 git clone git@github.com:NobodyOne04/jobradar-matcher.git
+git clone git@github.com:NobodyOne04/jobradar-web.git      # the web UI (ADR 0012)
 cd jobradar
 git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"   # the pinned matcher
 ```
@@ -21,7 +22,7 @@ scripts/pin-matcher.sh <commit>   # updates contracts/: MATCHER_REF, MATCHER_VER
 
 ## Run it
 
-Needs Docker with Compose v2, and both repos cloned side by side, as above.
+Needs Docker with Compose v2, and the three repos cloned side by side, as above.
 
 ```sh
 cp .env.example .env        # then replace every change-me (openssl rand -hex 24)
@@ -31,6 +32,7 @@ curl localhost:8080/readyz  # {"status":"ready"}
 
 | What | Where |
 |---|---|
+| Web UI | http://localhost:3000 (jobs, matches, application status) |
 | API | http://localhost:8080 |
 | MLflow UI | http://localhost:5001 (5000 is taken by macOS AirPlay Receiver) |
 | Postgres, matcher | not published; inside the compose network only |

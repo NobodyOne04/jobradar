@@ -47,7 +47,8 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
   raw paths (bounded label values)
 - `internal/testdb/`: throwaway migrated Postgres for tests
 - `compose.yaml`: postgres, migrate (one-shot), backend, matcher (built from
-  `${MATCHER_SRC:-../jobradar-matcher}`), mlflow; `Dockerfile`: backend (distroless, the
+  `${MATCHER_SRC:-../jobradar-matcher}`), web (nginx UI from `${WEB_SRC:-../jobradar-web}`,
+  :3000, proxies `/api/v1/` with the Host kept: ADR 0012), mlflow; `Dockerfile`: backend (distroless, the
   binary's `healthcheck` subcommand is its probe); `deploy/mlflow/Dockerfile`,
   `deploy/postgres/10-databases.sh` (creates the `jobradar` and `mlflow` DBs and roles, first
   start only)
@@ -74,7 +75,8 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
   code (SPEC §14). I own every significant architectural decision.
 - One ADR, one PR: the ADR and its implementation; lower numbers first. Commits start with
   `[ADR-NNNN]` (`workflow:commit-style`).
-- No LLM API dependency, no extra infrastructure, no frontend without a stated need (SPEC §13).
+- No LLM API dependency, no extra infrastructure (SPEC §13). The only frontend is `../jobradar-web`
+  (ADR 0012): plain HTML+JS, same origin through its nginx proxy; never add CORS for it.
 - No committed secrets: configuration comes from the environment; `.env*` is ignored.
 - Errors to clients are problem+json and never carry internal error text (DB errors,
   panics): log the detail with the `request_id`, return a short title.
