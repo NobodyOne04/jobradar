@@ -1,0 +1,39 @@
+{
+  "run": {
+    "info": {
+      "run_uuid": "e0d7bde629a649939692d0c5c106bc34",
+      "experiment_id": "0",
+      "run_name": "smiling-lynx-121",
+      "user_id": "",
+      "status": "RUNNING",
+      "start_time": 0,
+      "artifact_uri": "mlflow-artifacts:/0/e0d7bde629a649939692d0c5c106bc34/artifacts",
+      "lifecycle_stage": "active",
+      "run_id": "e0d7bde629a649939692d0c5c106bc34"
+    },
+    "data": {
+      "metrics": [
+        {
+          "key": "ndcg_at_10",
+          "value": 0.81,
+          "timestamp": 0,
+          "step": 0
+        }
+      ],
+      "params": [
+        {
+          "key": "matcher_version",
+          "value": "0.2.1"
+        }
+      ],
+      "tags": [
+        {
+          "key": "mlflow.runName",
+          "value": "smiling-lynx-121"
+        }
+      ]
+    },
+    "inputs": {},
+    "outputs": {}
+  }
+}

@@ -30,3 +30,21 @@ var (
 		Help: "Postings handled by syncs, by source kind and result (created, updated, unchanged, closed).",
 	}, []string{"kind", "result"})
 )
+
+var (
+	// MatchingPending is the open jobs still without a result from the champion.
+	MatchingPending = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "jobradar_matching_pending_jobs", Help: "Open jobs without a result from the champion model version.",
+	})
+
+	// MatchBatchDuration is how long one /v1/match batch took, retries included.
+	MatchBatchDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "jobradar_match_batch_duration_seconds", Help: "Duration of one matcher batch, retries included.",
+		Buckets: []float64{0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60},
+	})
+
+	// MatcherErrors counts failed batches (unavailable, rejected) and rejected jobs (invalid_job).
+	MatcherErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "jobradar_matcher_errors_total", Help: "Matcher failures by reason: unavailable, rejected, invalid_job.",
+	}, []string{"reason"})
+)

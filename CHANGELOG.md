@@ -9,6 +9,7 @@
 - Empty source and run lists are `[]` instead of `null`
 
 ### Added
+- Matching loop: follows MLflow's `champion` (an audit row per change, last one kept while MLflow is down), scores new and changed jobs in batches of 50 with the champion, keeps results per model version (instant rollback), circuit breaker, `/api/v1/models` and `/api/v1/models/activations`, matching metrics; compose `matcher-train` service for train/promote/models
 - `/metrics` (Prometheus): API requests and latency by route pattern, sync runs by kind and status, postings by result; logs use `ts` like the matcher's
 - Application tracking: statuses saved, applied, interview, offer, rejected, archived (none = discovered), an event log with backdating and notes, corrections with `force`, `/api/v1/applications` and `/api/v1/labels/export` (JSONL labels for retraining)
 - Matcher client: batches of up to 50, retries on 503 and connection errors, request IDs forwarded, startup version check against the pinned release, `/readyz` reports the matcher (`ok`, `unreachable`, `incompatible`, `disabled`) without failing; contract tests against the pinned OpenAPI with recorded real responses; matcher pinned to 0.2.1; compose: matcher cache volume

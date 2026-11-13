@@ -1,0 +1,27 @@
+{
+  "model_version": {
+    "name": "jobradar-matcher",
+    "version": "1",
+    "creation_timestamp": 1794540498667,
+    "last_updated_timestamp": 1794540498667,
+    "current_stage": "None",
+    "description": "",
+    "source": "runs:/e0d7bde629a649939692d0c5c106bc34/bundle",
+    "run_id": "e0d7bde629a649939692d0c5c106bc34",
+    "status": "READY",
+    "tags": [
+      {
+        "key": "gate",
+        "value": "passed"
+      },
+      {
+        "key": "promoted_reason",
+        "value": "first model"
+      }
+    ],
+    "run_link": "",
+    "aliases": [
+      "champion"
+    ]
+  }
+}

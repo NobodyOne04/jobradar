@@ -36,6 +36,7 @@ services:
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,::1}
       MATCHER_URL: http://matcher:8000
       MATCHER_TOKEN: ${MATCHER_TOKEN}
+      MLFLOW_URL: http://mlflow:5000
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,6 +101,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
+  # Model lifecycle commands (matcher ADR 0004), never started by `up`:
+  #   docker compose run --rm matcher-train train --from-defaults
+  #   docker compose run --rm matcher-train promote 1 --reason "first model"
+  #   docker compose run --rm matcher-train models
+  matcher-train:
+    image: jobradar-matcher:${MATCHER_VERSION}
+    profiles: [tools]
+    entrypoint: ["matcher"]
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ${MATCHER_SRC:-../jobradar-matcher}/eval:/app/eval:ro  # the eval set, for metrics and the gate
+      - ./labels:/in:ro                                         # label exports, for retraining
+    depends_on:
+      mlflow:
+        condition: service_healthy
 
 volumes:
   pgdata:
