@@ -6,6 +6,7 @@
 - Source catalog `docs/sources.json`: 9 job-board APIs and 10 ATS platforms checked live, with their terms; 10 unsuitable ones listed as removed
 
 ### Fixed
+- Dev Global Jobs descriptions with an escaped body and a real-HTML footer still showed literal tags; they are unescaped too
 - Dev Global Jobs descriptions that arrive HTML-escaped kept literal tags (<p>, <li>) in the stored text the matcher reads; they are unescaped first
 - Teamtailor sources could reach internal addresses through a host name that resolves (or redirects) to one; its client now connects to public addresses only (ADR 0014)
 - Jobs whose location lists ~200 countries could not be stored: dedup keys are now SHA-256 hashes (existing keys migrated)
