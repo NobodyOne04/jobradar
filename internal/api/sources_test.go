@@ -158,7 +158,7 @@ func TestCreateSourceValidatesBoardToken(t *testing.T) {
 	st := testdb.Migrated(t)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	sched := &ingest.Scheduler{Syncer: &ingest.Syncer{Pool: st.Pool,
-		Adapters: ingest.NewRegistry(teamtailor.New(nil), smartrecruiters.New(nil)), Log: log}, Concurrency: 1, Log: log}
+		Adapters: ingest.NewRegistry(teamtailor.New(), smartrecruiters.New(nil)), Log: log}, Concurrency: 1, Log: log}
 	s := &Sources{Queries: store.New(st.Pool), Scheduler: sched, Log: log, Background: context.Background()}
 	h := NewHandler(log, readyOK, 5*time.Second, []string{"example.com"}, s.Register)
 

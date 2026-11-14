@@ -43,7 +43,7 @@ func TestFetchConvertsRSSAndNormalizes(t *testing.T) {
 }
 
 func TestHostValidationRefusesInternalTargets(t *testing.T) {
-	a := New(nil)
+	a := New()
 	for _, bad := range []string{"localhost", "127.0.0.1", "backend", "backend:8080", "10.0.0.5", "[::1]",
 		"career.example.com/path", "evil.com:22", "postgres.local", "x.internal", "", "a..b.com"} {
 		if a.ValidateBoardToken(bad) == nil {

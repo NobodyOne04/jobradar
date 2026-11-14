@@ -29,8 +29,11 @@ boards like Greenhouse: a source is one company, its fetch is the full list, and
 - **Board tokens are validated** when a source is created (`ingest.BoardTokenValidator`) and
   again in `Fetch`: a company identifier (letters, digits, `-`, `_`) for six kinds, since it
   goes into a URL host or path; for Teamtailor a public DNS host name, refusing IPs, ports,
-  paths and single-label or `.local`/`.internal` names, so a source cannot point the backend
-  at itself or the compose network.
+  paths and single-label or `.local`/`.internal` names. That string check is only the early
+  answer: Teamtailor has its own client (`ingest.NewPublicHTTPClient`) whose dialer refuses any
+  connection to a non-public address (loopback, private, link-local, CGNAT, multicast,
+  unspecified) after DNS resolution, follows only https redirects, and uses no proxy, so a
+  name that resolves or is rebound to an internal address, or a redirect there, is refused.
 - **Empty first sync.** SmartRecruiters answers 200 with no postings for an unknown company,
   so a typo would look like an empty board. For every company board (not feeds), a first sync
   with 0 postings records "no postings on the first sync: check board_token" on the run.

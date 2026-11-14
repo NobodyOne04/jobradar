@@ -7,7 +7,9 @@
 // board_token is the career site's host name, e.g. career.teamtailor.com or a company's own
 // domain (careers.example.com): {slug}.teamtailor.com often 404s. Since the token is a whole
 // host, ValidateBoardToken refuses IP addresses, ports, paths and single-label names
-// (localhost), so a source cannot point the backend at itself or the compose network.
+// (localhost) early, and the adapter's own client (ingest.NewPublicHTTPClient) refuses any
+// connection to a non-public address after DNS resolution, including after redirects, so a
+// source cannot point the backend at itself or the compose network.
 //
 // Notes on the data:
 //   - XML, so each item is decoded into a struct and stored as JSON (raw_payload is jsonb).
@@ -42,8 +44,9 @@ type Adapter struct {
 	AllowHost string
 }
 
-// New returns an adapter for the real sites.
-func New(client *ingest.HTTPClient) *Adapter { return &Adapter{Client: client, Scheme: Scheme} }
+// New returns an adapter for the real sites, with its own client that connects to public
+// addresses only, at most 2 requests a second.
+func New() *Adapter { return &Adapter{Client: ingest.NewPublicHTTPClient(2), Scheme: Scheme} }
 
 // Kind is the sources.kind value.
 func (*Adapter) Kind() string { return "teamtailor" }
