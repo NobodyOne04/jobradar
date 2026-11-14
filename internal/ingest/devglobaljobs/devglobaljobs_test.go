@@ -92,6 +92,10 @@ func TestEscapedDescriptionIsUnescaped(t *testing.T) {
 		`{"id":1,"title":"x","description":"&lt;p&gt;At Lyft &amp;amp; co&lt;/p&gt;"}`: "<p>At Lyft &amp; co</p>",
 		`{"id":2,"title":"x","description":"<p>Fish &amp; chips</p>"}`:                 "<p>Fish &amp; chips</p>",
 		`{"id":3,"title":"x","description":"Plain text, 3 &lt; 5"}`:                    "Plain text, 3 < 5",
+		// An escaped body with a real-HTML footer, as Dev Global sends some.
+		`{"id":4,"title":"x","description":"&lt;div&gt;&lt;p&gt;Body&lt;/p&gt;&lt;p&gt;More&lt;/p&gt;&lt;/div&gt;<p>Find <a href=\"https://x.test\">more</a></p>"}`: `<div><p>Body</p><p>More</p></div><p>Find <a href="https://x.test">more</a></p>`,
+		// Real HTML that mentions "1 &lt; 2" once stays as is.
+		`{"id":5,"title":"x","description":"<p>Real</p><p>HTML, 1 &lt; 2</p>"}`: "<p>Real</p><p>HTML, 1 &lt; 2</p>",
 	} {
 		n, err := a.Normalize(ingest.RawPosting{Payload: json.RawMessage(payload)})
 		if err != nil || n.DescriptionHTML != want {

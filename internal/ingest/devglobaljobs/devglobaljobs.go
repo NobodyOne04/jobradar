@@ -190,10 +190,12 @@ func (*Adapter) Normalize(raw ingest.RawPosting) (ingest.NormalizedJob, error) {
 	return n, nil
 }
 
-// description unescapes a description that came HTML-escaped (no tags, but &lt; entities), so
-// its tags are stripped like any other; an already-HTML one is left as is.
+// description unescapes a description that came HTML-escaped, so its tags are stripped like
+// any other. Some are an escaped body plus a real-HTML footer ("<p>Find more on ..."), so the
+// test is more escaped tags than real ones; unescaping leaves the real ones as they are. A
+// normal HTML description (more real tags) is left alone.
 func description(s string) string {
-	if !strings.Contains(s, "<") && strings.Contains(s, "&lt;") {
+	if strings.Count(s, "&lt;") > strings.Count(s, "<") {
 		return html.UnescapeString(s)
 	}
 	return s
