@@ -1,0 +1,680 @@
+{
+  "catalog_version": "2.0.0",
+  "project": "jobradar",
+  "description": "Reviewed job sources for jobradar: public job-board APIs and ATS platforms, each checked live",
+  "last_reviewed": "2026-11-14",
+  "how_to_use": [
+    "A catalog of candidate source kinds, not jobradar config: a kind is added as an adapter per jobradar's 'new source kind' rule (docs, terms, recorded testdata), then registered",
+    "implemented_in_jobradar: true means an adapter exists; boards are added as rows via POST /api/v1/sources",
+    "enabled: false means verify the terms (or get an API key) first",
+    "terms are binding: copy them into the adapter's package doc"
+  ],
+  "defaults": {
+    "authentication": "none",
+    "http_method": "GET",
+    "request_timeout_seconds": 30,
+    "retry": {
+      "max_attempts": 3,
+      "strategy": "exponential_backoff",
+      "retry_status_codes": [
+        429,
+        500,
+        502,
+        503,
+        504
+      ]
+    },
+    "requirements": [
+      "Preserve the original job URL and source identifier",
+      "Respect source rate limits and attribution terms",
+      "Close a job as missing only after a complete listing (jobradar ingest.ErrTruncated rule)"
+    ]
+  },
+  "aggregators": [
+    {
+      "id": "himalayas",
+      "name": "Himalayas",
+      "enabled": true,
+      "priority": "P0",
+      "base_url": "https://himalayas.app",
+      "endpoint": "https://himalayas.app/jobs/api",
+      "documentation": "https://himalayas.app/docs/remote-jobs-api",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "cursor",
+        "response_cursor_field": "nextCursor"
+      },
+      "data": [
+        "title",
+        "company",
+        "description",
+        "location",
+        "salary",
+        "seniority",
+        "timezone",
+        "employment_type",
+        "application_url"
+      ],
+      "notes": [
+        "Already an adapter in jobradar (internal/ingest/himalayas)",
+        "Search stops at 500 jobs: narrow the query"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, 20 jobs per page, nextCursor"
+      },
+      "implemented_in_jobradar": true,
+      "terms": [
+        "Keep applicationLink as the job URL",
+        "Show 'via Himalayas' with that link",
+        "Never pass jobs on to other boards or feeds",
+        "Close expired jobs (expires_at)"
+      ]
+    },
+    {
+      "id": "jobicy",
+      "name": "Jobicy",
+      "enabled": true,
+      "priority": "P0",
+      "base_url": "https://jobicy.com",
+      "endpoint": "https://jobicy.com/api/v2/remote-jobs",
+      "documentation": "https://jobicy.com/jobs-rss-feed",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "none",
+        "max_items_per_request": 100
+      },
+      "data": [
+        "title",
+        "company",
+        "description",
+        "location",
+        "salary",
+        "job_type",
+        "job_level",
+        "application_url",
+        "publication_date"
+      ],
+      "notes": [
+        "Feed covers recent jobs only",
+        "Filters: count, geo, industry, tag"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, 100 jobs; about a third tech roles"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "Credit Jobicy with a direct link to the source",
+        "Apply buttons must go to the job URL from the feed"
+      ],
+      "rate_limit": "Poll at most once per hour"
+    },
+    {
+      "id": "remoteok",
+      "name": "Remote OK",
+      "enabled": true,
+      "priority": "P1",
+      "base_url": "https://remoteok.com",
+      "endpoint": "https://remoteok.com/api",
+      "documentation": "https://remoteok.com/faq",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "none",
+        "notes": "Public feed returns a limited recent listing"
+      },
+      "data": [
+        "title",
+        "company",
+        "description",
+        "location",
+        "tags",
+        "salary",
+        "application_url",
+        "publication_date"
+      ],
+      "notes": [
+        "Skip element 0 (legal notice, not a job)",
+        "Recent jobs only, no paging"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, 97 jobs; element 0 is the legal notice"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "Link back (followed link, no nofollow) to the Remote OK URL",
+        "Mention 'Remote OK' as the source",
+        "Do not use the Remote OK logo"
+      ]
+    },
+    {
+      "id": "remotive",
+      "name": "Remotive",
+      "enabled": true,
+      "priority": "P2",
+      "base_url": "https://remotive.com",
+      "endpoint": "https://remotive.com/api/remote-jobs",
+      "documentation": "https://remotive.com/api-documentation",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "source_specific",
+        "notes": "Public feed has limited results"
+      },
+      "data": [
+        "title",
+        "company",
+        "description",
+        "category",
+        "job_type",
+        "location",
+        "salary",
+        "publication_date",
+        "application_url"
+      ],
+      "notes": [
+        "Small, 24h-delayed feed: low yield, keep the poll interval at 6h or more"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, 16 jobs; jobs delayed 24h"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "Link back to the Remotive URL and name Remotive as the source",
+        "Never submit Remotive jobs to third-party sites (Jooble, Google Jobs, LinkedIn...)",
+        "Do not use its jobs to collect signups"
+      ],
+      "rate_limit": "At most 4 requests per day (excess is blocked)"
+    },
+    {
+      "id": "devglobaljobs",
+      "name": "Dev Global Jobs",
+      "enabled": true,
+      "priority": "P1",
+      "endpoint": "https://devglobaljobs.com/api/v1/jobs",
+      "documentation": "https://devglobaljobs.com/developers",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "offset_limit",
+        "response_fields": [
+          "meta.offset",
+          "meta.limit",
+          "meta.hasMore"
+        ]
+      },
+      "notes": [
+        "Free display API; terms are in every response's meta.license"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, 25 per page of ~112k; mostly dev roles"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "Show a visible 'Powered by Dev Global Jobs' link to https://devglobaljobs.com",
+        "Keep each job's link"
+      ]
+    },
+    {
+      "id": "workingnomads",
+      "name": "Working Nomads",
+      "enabled": false,
+      "priority": "P2",
+      "endpoint": "https://www.workingnomads.com/api/exposed_jobs/",
+      "documentation": "https://www.workingnomads.com",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "source_specific"
+      },
+      "notes": [
+        "Undocumented exposed_jobs endpoint: may change without notice"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, 36 jobs; mostly tech"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "No published API terms found: read them before enabling"
+      ]
+    },
+    {
+      "id": "weworkremotely",
+      "name": "We Work Remotely",
+      "enabled": false,
+      "priority": "P2",
+      "endpoint": "https://weworkremotely.com/remote-jobs.rss",
+      "documentation": "https://weworkremotely.com",
+      "method": "GET",
+      "format": "rss",
+      "authentication": "none",
+      "pagination": {
+        "type": "none"
+      },
+      "notes": [
+        "RSS, not JSON",
+        "Item title is 'Company: Role'"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "RSS 200, 100 items; site blocks scripted page requests (403)"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "No published feed terms found: check before enabling",
+        "Link to the original listing"
+      ]
+    },
+    {
+      "id": "adzuna",
+      "name": "Adzuna",
+      "enabled": false,
+      "priority": "P2",
+      "endpoint": "https://api.adzuna.com/v1/api/jobs/{country}/search/{page}",
+      "documentation": "https://developer.adzuna.com/",
+      "method": "GET",
+      "format": "json",
+      "authentication": "api_key",
+      "pagination": {
+        "type": "page"
+      },
+      "notes": [
+        "Free key; salary data; country-scoped search, so not remote-first"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "docs reachable; endpoint needs app_id and app_key (not called)"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "Adzuna API terms on developer.adzuna.com (attribution required)"
+      ]
+    },
+    {
+      "id": "findwork",
+      "name": "Findwork",
+      "enabled": false,
+      "priority": "P2",
+      "endpoint": "https://findwork.dev/api/jobs/",
+      "documentation": "https://findwork.dev/developers/",
+      "method": "GET",
+      "format": "json",
+      "authentication": "api_key",
+      "pagination": {
+        "type": "source_specific"
+      },
+      "notes": [
+        "Token in 'Authorization: Token <key>'"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "401 without a token: endpoint exists"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "Read findwork.dev/developers terms before enabling"
+      ]
+    }
+  ],
+  "ats_platforms": [
+    {
+      "id": "greenhouse",
+      "name": "Greenhouse",
+      "enabled": true,
+      "priority": "P0",
+      "endpoint_template": "https://boards-api.greenhouse.io/v1/boards/{board_slug}/jobs?content=true",
+      "documentation": "https://docs.greenhouse.io/job-board.html",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "none"
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "Already an adapter in jobradar",
+        "absolute_url may be the company's own careers page; direct form: https://job-boards.greenhouse.io/embed/job_app?for={board_slug}&token={job_id}"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, gitlab: 251 jobs"
+      },
+      "implemented_in_jobradar": true,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "lever",
+      "name": "Lever",
+      "enabled": true,
+      "priority": "P0",
+      "endpoint_template": "https://api.lever.co/v0/postings/{company_slug}?mode=json",
+      "documentation": "https://github.com/lever/postings-api",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "skip_limit",
+        "parameters": [
+          "skip",
+          "limit"
+        ]
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "Already an adapter in jobradar",
+        "EU sites: api.eu.lever.co",
+        "applyUrl is the direct form"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, palantir: 302 postings"
+      },
+      "implemented_in_jobradar": true,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "ashby",
+      "name": "Ashby",
+      "enabled": true,
+      "priority": "P0",
+      "endpoint_template": "https://api.ashbyhq.com/posting-api/job-board/{board_slug}?includeCompensation=true",
+      "documentation": "https://developers.ashbyhq.com/docs/public-job-posting-api",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "none"
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "Already an adapter in jobradar",
+        "Skip isListed=false",
+        "Direct form: {jobUrl}/application"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, supabase: 77 jobs"
+      },
+      "implemented_in_jobradar": true,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "smartrecruiters",
+      "name": "SmartRecruiters",
+      "enabled": true,
+      "priority": "P1",
+      "endpoint_template": "https://api.smartrecruiters.com/v1/companies/{company_id}/postings?limit=100&offset=0",
+      "documentation": "https://developers.smartrecruiters.com/docs/endpoints",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "offset_limit",
+        "max_limit": 100
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "An unknown company id also returns 200 with 0 postings: validate the id when a source is added",
+        "Descriptions need a per-posting detail request"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, BoschGroup and Ubisoft2 return postings"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "workable",
+      "name": "Workable",
+      "enabled": true,
+      "priority": "P1",
+      "endpoint_template": "https://apply.workable.com/api/v1/widget/accounts/{account_slug}?details=true",
+      "documentation": "https://workable.readme.io/reference/jobs-1",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "none"
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "Public career widget endpoint",
+        "Description may contain HTML"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, huggingface: 6 jobs; unknown account 404"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "recruitee",
+      "name": "Recruitee",
+      "enabled": true,
+      "priority": "P1",
+      "endpoint_template": "https://{company_slug}.recruitee.com/api/offers/",
+      "documentation": "https://docs.recruitee.com/reference/offers",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "none"
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "Company-specific endpoint",
+        "Includes offer descriptions and requirements"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, bunq: 23 offers; unknown company 404"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "personio",
+      "name": "Personio",
+      "enabled": true,
+      "priority": "P2",
+      "endpoint_template": "https://{company_slug}.jobs.personio.de/xml?language=en",
+      "documentation": "https://developer.personio.de/docs/retrieving-open-job-positions",
+      "method": "GET",
+      "format": "xml",
+      "authentication": "none",
+      "pagination": {
+        "type": "none"
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "Some companies use jobs.personio.com",
+        "XML; descriptions are HTML in CDATA"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200 XML, personio: 2 positions"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "breezy",
+      "name": "Breezy HR",
+      "enabled": true,
+      "priority": "P2",
+      "endpoint_template": "https://{company_slug}.breezy.hr/json",
+      "documentation": "https://github.com/Mersetti/ats-job-board-apis",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "none"
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "List has no descriptions"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, breezy: 3 jobs; unknown company 404"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "teamtailor",
+      "name": "Teamtailor",
+      "enabled": true,
+      "priority": "P2",
+      "endpoint_template": "https://{career_host}/jobs.rss",
+      "documentation": "https://github.com/Mersetti/ats-job-board-apis",
+      "method": "GET",
+      "format": "rss",
+      "authentication": "none",
+      "pagination": {
+        "type": "none"
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "Use the company's career host (often a custom domain or career.teamtailor.com)",
+        "RSS"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200 RSS, career.teamtailor.com; the {slug}.teamtailor.com form can 404"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    },
+    {
+      "id": "rippling",
+      "name": "Rippling",
+      "enabled": true,
+      "priority": "P2",
+      "endpoint_template": "https://ats.rippling.com/api/v2/board/{board_slug}/jobs?page=0",
+      "documentation": "https://github.com/Mersetti/ats-job-board-apis",
+      "method": "GET",
+      "format": "json",
+      "authentication": "none",
+      "pagination": {
+        "type": "page",
+        "parameter": "page",
+        "response_fields": [
+          "totalPages",
+          "totalItems"
+        ]
+      },
+      "identifier_source": "company_career_page",
+      "notes": [
+        "Undocumented by Rippling (community catalog): watch for schema changes"
+      ],
+      "verification": {
+        "status": "live_checked",
+        "date": "2026-11-14",
+        "result": "200, rippling: 717 jobs, paged"
+      },
+      "implemented_in_jobradar": false,
+      "terms": [
+        "The company's own board: keep its job URL as the apply link"
+      ]
+    }
+  ],
+  "removed": [
+    {
+      "id": "arbeitnow",
+      "reason": "Germany-focused: 16 of 300 jobs remote, and ?remote=true is ignored"
+    },
+    {
+      "id": "usajobs",
+      "reason": "US federal jobs only; not relevant to remote tech roles"
+    },
+    {
+      "id": "jooble",
+      "reason": "Partner API with key and agreement; docs blocked (403); duplicates other aggregators"
+    },
+    {
+      "id": "workday",
+      "reason": "Per-tenant POST mimicking the career site; no stable public contract"
+    },
+    {
+      "id": "bamboohr",
+      "reason": "No endpoint: listed only as 'needs_validation'"
+    },
+    {
+      "id": "pinpoint",
+      "reason": "No endpoint: listed only as 'needs_validation'"
+    },
+    {
+      "id": "oracle_recruiting",
+      "reason": "No endpoint: listed only as 'needs_validation'"
+    },
+    {
+      "id": "adp",
+      "reason": "No endpoint: listed only as 'needs_validation'"
+    },
+    {
+      "id": "phenom",
+      "reason": "No endpoint: listed only as 'needs_validation'"
+    },
+    {
+      "id": "eightfold",
+      "reason": "No endpoint: listed only as 'needs_validation'"
+    }
+  ],
+  "references": {
+    "ats_catalog": "https://github.com/Mersetti/ats-job-board-apis",
+    "extended_ats_catalog": "https://github.com/danielhagever/job-board-apis",
+    "ats_field_comparison": "https://github.com/GregoryBolshakov/ats-job-boards-reference"
+  }
+}
