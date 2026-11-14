@@ -13,14 +13,34 @@ import (
 // errNotPublic is returned for a connection to an address that is not on the public internet.
 var errNotPublic = errors.New("refused: not a public address")
 
-// cgnat is the carrier-grade NAT range (RFC 6598), which netip does not classify as private.
-var cgnat = netip.MustParsePrefix("100.64.0.0/10")
+// special lists the IANA special-purpose ranges that netip's checks miss: "this network",
+// CGNAT, IETF protocol assignments, benchmarking, reserved, and the IPv6 transition ranges
+// that embed an IPv4 address (IPv4-compatible, NAT64, 6to4, Teredo), refused whole.
+var special = func() []netip.Prefix {
+	var out []netip.Prefix
+	for _, p := range []string{
+		"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24", "198.18.0.0/15",
+		"198.51.100.0/24", "203.0.113.0/24", "240.0.0.0/4",
+		"::/96", "64:ff9b::/96", "64:ff9b:1::/48", "2001::/32", "2001:db8::/32", "2002::/16",
+	} {
+		out = append(out, netip.MustParsePrefix(p))
+	}
+	return out
+}()
 
 // PublicAddr reports whether ip is a public unicast address: not loopback, private,
-// link-local, CGNAT, multicast or unspecified.
+// link-local, multicast, unspecified, or one of the special ranges above.
 func PublicAddr(ip netip.Addr) bool {
 	ip = ip.Unmap()
-	return ip.IsValid() && ip.IsGlobalUnicast() && !ip.IsPrivate() && !cgnat.Contains(ip)
+	if !ip.IsValid() || !ip.IsGlobalUnicast() || ip.IsPrivate() {
+		return false
+	}
+	for _, p := range special {
+		if p.Contains(ip) {
+			return false
+		}
+	}
+	return true
 }
 
 // NewPublicHTTPClient is NewHTTPClient for sources whose host comes from user input (a
