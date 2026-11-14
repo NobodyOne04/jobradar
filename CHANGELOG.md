@@ -6,6 +6,7 @@
 - Source catalog `docs/sources.json`: 9 job-board APIs and 10 ATS platforms checked live, with their terms; 10 unsuitable ones listed as removed
 
 ### Fixed
+- Teamtailor sources could reach internal addresses through a host name that resolves (or redirects) to one; its client now connects to public addresses only (ADR 0014)
 - Jobs whose location lists ~200 countries could not be stored: dedup keys are now SHA-256 hashes (existing keys migrated)
 - Syncs could deadlock when as many ran at once as the pool had connections; each sync now uses one connection, and manual syncs share the concurrency limit
 - The API refuses foreign Host headers and cross-site Origins, so web pages in your browser cannot call it (DNS rebinding, CSRF); `ALLOWED_HOSTS` sets the allowed names

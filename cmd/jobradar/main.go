@@ -174,7 +174,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 				ashby.New(httpClient), himalayas.New(),
 				jobicy.New(), remoteok.New(), remotive.New(), devglobaljobs.New(),
 				smartrecruiters.New(httpClient), workable.New(httpClient), recruitee.New(httpClient),
-				personio.New(httpClient), breezy.New(httpClient), teamtailor.New(httpClient), rippling.New(httpClient)),
+				personio.New(httpClient), breezy.New(httpClient), teamtailor.New(), rippling.New(httpClient)),
 			Log: log,
 		},
 		Interval:    cfg.SyncInterval,
