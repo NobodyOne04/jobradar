@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/NobodyOne04/jobradar/internal/store"
@@ -18,6 +19,9 @@ type RawPosting struct {
 	URL        string          // where a person views or applies to it
 	Payload    json.RawMessage // the source's JSON for this posting, kept as is
 	ExpiresAt  *time.Time      // when the source says it stops being listed; nil if it does not say
+	// ListHash, set by the sync for an Enricher, is the hash of the list entry Payload was
+	// built from: stored as payload_hash, so an unchanged entry is not enriched again.
+	ListHash string
 }
 
 // ErrTruncated is returned by Fetch, together with the postings it did get, when the source
@@ -29,6 +33,23 @@ var ErrTruncated = errors.New("listing truncated")
 // calls it when a source is created, so a bad config fails then, not at every sync.
 type ConfigValidator interface {
 	ValidateConfig(config json.RawMessage) error
+}
+
+// BoardTokenValidator is implemented by adapters that put board_token into a URL's host or
+// path. The API calls it when a source is created; Fetch calls it too (ADR 0014).
+type BoardTokenValidator interface {
+	ValidateBoardToken(token string) error
+}
+
+var slugRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$`)
+
+// ValidSlug accepts a platform's company identifier: letters, digits, '-' and '_', so it
+// is safe in a URL host label or path segment.
+func ValidSlug(token string) error {
+	if !slugRE.MatchString(token) {
+		return fmt.Errorf("%q is not a company identifier (letters, digits, - and _)", token)
+	}
+	return nil
 }
 
 // NormalizedJob is the source-independent job. Unknown values stay unknown: empty strings,

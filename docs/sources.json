@@ -455,7 +455,7 @@
         "date": "2026-11-14",
         "result": "200, BoschGroup and Ubisoft2 return postings"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "The company's own board: keep its job URL as the apply link"
       ]
@@ -483,7 +483,7 @@
         "date": "2026-11-14",
         "result": "200, huggingface: 6 jobs; unknown account 404"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "The company's own board: keep its job URL as the apply link"
       ]
@@ -511,7 +511,7 @@
         "date": "2026-11-14",
         "result": "200, bunq: 23 offers; unknown company 404"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "The company's own board: keep its job URL as the apply link"
       ]
@@ -539,7 +539,7 @@
         "date": "2026-11-14",
         "result": "200 XML, personio: 2 positions"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "The company's own board: keep its job URL as the apply link"
       ]
@@ -559,14 +559,15 @@
       },
       "identifier_source": "company_career_page",
       "notes": [
-        "List has no descriptions"
+        "List has no descriptions",
+        "Its CDN sometimes answers 403 to scripted requests"
       ],
       "verification": {
         "status": "live_checked",
         "date": "2026-11-14",
         "result": "200, breezy: 3 jobs; unknown company 404"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "The company's own board: keep its job URL as the apply link"
       ]
@@ -594,7 +595,7 @@
         "date": "2026-11-14",
         "result": "200 RSS, career.teamtailor.com; the {slug}.teamtailor.com form can 404"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "The company's own board: keep its job URL as the apply link"
       ]
@@ -619,14 +620,15 @@
       },
       "identifier_source": "company_career_page",
       "notes": [
-        "Undocumented by Rippling (community catalog): watch for schema changes"
+        "Undocumented by Rippling (community catalog): watch for schema changes",
+        "The list repeats a job once per location (same id); descriptions only via /jobs/{id}"
       ],
       "verification": {
         "status": "live_checked",
         "date": "2026-11-14",
         "result": "200, rippling: 717 jobs, paged"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "The company's own board: keep its job URL as the apply link"
       ]

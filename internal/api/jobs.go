@@ -36,7 +36,8 @@ func (j *Jobs) Register(mux *http.ServeMux) {
 var (
 	bands       = []string{"strong", "good", "weak", "excluded"}
 	remotes     = []string{"remote", "hybrid", "onsite", "unknown"}
-	sourceKinds = []string{"greenhouse", "lever", "ashby", "himalayas", "jobicy", "remoteok", "remotive", "devglobaljobs"}
+	sourceKinds = []string{"greenhouse", "lever", "ashby", "himalayas", "jobicy", "remoteok", "remotive", "devglobaljobs",
+		"smartrecruiters", "workable", "recruitee", "personio", "breezy", "teamtailor", "rippling"}
 	// attributions are the source credits the boards' terms require next to their link
 	// (Himalayas terms §113 (b); ADR 0013). Company boards need none.
 	attributions = map[string]string{

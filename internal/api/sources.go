@@ -87,6 +87,11 @@ func (s *Sources) create(w http.ResponseWriter, r *http.Request) {
 			problems = append(problems, "config: "+err.Error())
 		}
 	}
+	if v, ok := adapter.(ingest.BoardTokenValidator); ok && in.BoardToken != "" {
+		if err := v.ValidateBoardToken(in.BoardToken); err != nil {
+			problems = append(problems, "board_token: "+err.Error())
+		}
+	}
 	if len(problems) > 0 {
 		WriteProblem(w, http.StatusUnprocessableEntity, "invalid source", strings.Join(problems, "; "))
 		return
