@@ -63,7 +63,7 @@ WHERE p.job_id = ANY(sqlc.arg('job_ids')::bigint[])
 ORDER BY p.job_id, p.id;
 
 -- name: GetJob :one
-SELECT id, title, company_name, description_text, location_text, remote_policy, countries,
+SELECT id, title, company_name, description_text, description_html, location_text, remote_policy, countries,
        employment_type, salary_min, salary_max, salary_currency, salary_period, posted_at,
        closed_at, content_hash, created_at, updated_at
 FROM jobs WHERE id = $1;

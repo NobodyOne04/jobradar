@@ -24,7 +24,7 @@ func (q *Queries) ChampionVersionID(ctx context.Context) (int64, error) {
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, title, company_name, description_text, location_text, remote_policy, countries,
+SELECT id, title, company_name, description_text, description_html, location_text, remote_policy, countries,
        employment_type, salary_min, salary_max, salary_currency, salary_period, posted_at,
        closed_at, content_hash, created_at, updated_at
 FROM jobs WHERE id = $1
@@ -35,6 +35,7 @@ type GetJobRow struct {
 	Title           string     `json:"title"`
 	CompanyName     string     `json:"company_name"`
 	DescriptionText string     `json:"description_text"`
+	DescriptionHtml string     `json:"description_html"`
 	LocationText    string     `json:"location_text"`
 	RemotePolicy    string     `json:"remote_policy"`
 	Countries       []string   `json:"countries"`
@@ -58,6 +59,7 @@ func (q *Queries) GetJob(ctx context.Context, id int64) (GetJobRow, error) {
 		&i.Title,
 		&i.CompanyName,
 		&i.DescriptionText,
+		&i.DescriptionHtml,
 		&i.LocationText,
 		&i.RemotePolicy,
 		&i.Countries,

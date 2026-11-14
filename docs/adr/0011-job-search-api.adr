@@ -53,6 +53,9 @@ Query parameters, all optional:
 
 **`GET /api/v1/jobs/{id}`**: everything about one job, open or closed:
 - the job with `description_text`, all its postings (`sources`, with URLs and attribution)
+  - *Added 2026-11-14 (ADR-0014.4):* `description_html`, the board's HTML as normalized, so
+    the web UI can show formatted descriptions; it comes from external boards, so clients
+    sanitize it (jobradar-web keeps an allowlist of tags).
 - `match`: the same choice as above, plus `dimensions`, `skills` (matched, transferable,
   missing) and `explanations` from the stored result
 - `application` with its `events` (ADR 0008)
