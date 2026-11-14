@@ -217,3 +217,13 @@ func TestJobDetail(t *testing.T) {
 	}
 	assertProblem(t, do(h, "GET", "/api/v1/jobs/999999", ""), 404)
 }
+
+// Every board that is not a company's own needs the credit its terms ask for (ADR 0013).
+func TestNonCompanyKindsHaveAttribution(t *testing.T) {
+	company := map[string]bool{"greenhouse": true, "lever": true, "ashby": true}
+	for _, k := range sourceKinds {
+		if !company[k] && attributions[k] == "" {
+			t.Errorf("kind %q has no attribution", k)
+		}
+	}
+}

@@ -40,8 +40,9 @@ func (s *Scheduler) Run(ctx context.Context) {
 		var wg sync.WaitGroup
 		for _, src := range due {
 			wg.Go(func() {
+				var tooSoon *TooSoonError
 				if err := s.SyncLocked(ctx, src); err != nil && !errors.Is(err, ErrSyncRunning) &&
-					ctx.Err() == nil {
+					!errors.As(err, &tooSoon) && ctx.Err() == nil {
 					s.Log.Warn("sync failed", "source_id", src.ID, "error", err)
 				}
 			})
@@ -89,6 +90,10 @@ func (s *Scheduler) SyncLocked(ctx context.Context, src store.Source) error {
 		defer cancel()
 		_, _ = conn.Exec(unlockCtx, "SELECT pg_advisory_unlock($1)", src.ID)
 	}()
+	// Checked under the lock, so two callers cannot both pass it.
+	if err := CheckMinInterval(ctx, conn, s.Syncer.Adapters, src, time.Now()); err != nil {
+		return err
+	}
 	_, err = s.Syncer.SyncOn(ctx, conn, src)
 	return err
 }

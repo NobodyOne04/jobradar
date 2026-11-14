@@ -1,0 +1,54 @@
+{
+ "meta": {
+  "total": 3378,
+  "limit": 3,
+  "offset": 0,
+  "hasMore": false,
+  "updatedAt": "2026-11-14T09:05:49.472Z",
+  "license": "Free display API: show a visible link \"Powered by Dev Global Jobs\" to https://devglobaljobs.com and keep the link of each job",
+  "attribution": {
+   "text": "Powered by Dev Global Jobs",
+   "url": "https://devglobaljobs.com",
+   "html": "<a href=\"https://devglobaljobs.com\">Powered by Dev Global Jobs</a>"
+  },
+  "documentation": "https://devglobaljobs.com/developers"
+ },
+ "jobs": [
+  {
+   "id": 176858108,
+   "title": "Senior Data & Analytics Engineer",
+   "organization": "Polarsteps",
+   "location": "Amsterdam",
+   "country": null,
+   "category": "international",
+   "skillCategory": "technology",
+   "jobType": "Full-time",
+   "salary": null,
+   "descriptionExcerpt": "<p><em>Looking for a new adventure? You’ve come to the right place.</em></p><p>We're an Amsterdam-based team of 100 (and counting) with 25+ nationalities amongst us! A varied bunch of “Citizens of The World” with a wide range of skills and hundreds of thousands of kilometers under our travel belts. …",
+   "postedAt": "2026-11-14T08:18:20.147Z",
+   "closingDate": null,
+   "featured": false,
+   "isEmployerPosted": false,
+   "easyApply": false,
+   "url": "https://devglobaljobs.com/jobs/detail/176858108"
+  },
+  {
+   "id": 176858105,
+   "title": "Engineering Manager - Developer Ecosystem",
+   "organization": "databricks",
+   "location": "Amsterdam",
+   "country": null,
+   "category": "international",
+   "skillCategory": "technology",
+   "jobType": "Full-time",
+   "salary": null,
+   "descriptionExcerpt": "&lt;p&gt;&lt;span style=\"font-weight: 400;\"&gt;RDQ427R369&lt;/span&gt;&lt;/p&gt; &lt;p&gt;&lt;span style=\"font-weight: 400;\"&gt;At Databricks, we are passionate about enabling data teams to solve the world's toughest problems — from making the next mode of transportation a reality to accelerating th…",
+   "postedAt": "2026-11-14T08:18:20.147Z",
+   "closingDate": null,
+   "featured": false,
+   "isEmployerPosted": false,
+   "easyApply": false,
+   "url": "https://devglobaljobs.com/jobs/detail/176858105"
+  }
+ ]
+}

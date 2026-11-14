@@ -16,6 +16,7 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/ingest"
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
 	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
+	"github.com/NobodyOne04/jobradar/internal/ingest/remotive"
 	"github.com/NobodyOne04/jobradar/internal/store"
 	"github.com/NobodyOne04/jobradar/internal/testdb"
 )
@@ -118,3 +119,35 @@ func TestSourceLifecycle(t *testing.T) {
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+func TestManualSyncRespectsMinInterval(t *testing.T) {
+	st := testdb.Migrated(t)
+	fixture, err := os.ReadFile("../ingest/remotive/testdata/remote-jobs.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	feed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(fixture) }))
+	t.Cleanup(feed.Close)
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	adapter := &remotive.Adapter{Client: ingest.NewHTTPClient(1000), FeedURL: feed.URL}
+	sched := &ingest.Scheduler{Syncer: &ingest.Syncer{Pool: st.Pool, Adapters: ingest.NewRegistry(adapter), Log: log},
+		Concurrency: 1, Log: log}
+	s := &Sources{Queries: store.New(st.Pool), Scheduler: sched, Log: log, Background: context.Background()}
+	h := NewHandler(log, readyOK, 5*time.Second, []string{"example.com"}, s.Register)
+
+	if rec := do(h, "POST", "/api/v1/sources", `{"kind":"remotive","board_token":"all","config":{"category":"data"}}`); rec.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", rec.Code, rec.Body)
+	}
+	if rec := do(h, "POST", "/api/v1/sources/1/sync", ""); rec.Code != http.StatusAccepted {
+		t.Fatalf("first sync: %d %s", rec.Code, rec.Body)
+	}
+	s.Wait()
+	rec := do(h, "POST", "/api/v1/sources/1/sync", "")
+	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" ||
+		!strings.Contains(rec.Body.String(), "terms limit requests") {
+		t.Fatalf("second sync: %d %v %s", rec.Code, rec.Header(), rec.Body)
+	}
+	if n, _ := strconv.Atoi(rec.Header().Get("Retry-After")); n < 5*3600 {
+		t.Errorf("Retry-After %d s, want about 6h", n)
+	}
+}

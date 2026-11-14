@@ -23,9 +23,13 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/config"
 	"github.com/NobodyOne04/jobradar/internal/ingest"
 	"github.com/NobodyOne04/jobradar/internal/ingest/ashby"
+	"github.com/NobodyOne04/jobradar/internal/ingest/devglobaljobs"
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
 	"github.com/NobodyOne04/jobradar/internal/ingest/himalayas"
+	"github.com/NobodyOne04/jobradar/internal/ingest/jobicy"
 	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
+	"github.com/NobodyOne04/jobradar/internal/ingest/remoteok"
+	"github.com/NobodyOne04/jobradar/internal/ingest/remotive"
 	"github.com/NobodyOne04/jobradar/internal/matcher"
 	"github.com/NobodyOne04/jobradar/internal/matching"
 	"github.com/NobodyOne04/jobradar/internal/profiles"
@@ -160,7 +164,8 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 		Syncer: &ingest.Syncer{
 			Pool: st.Pool,
 			Adapters: ingest.NewRegistry(greenhouse.New(httpClient), lever.New(httpClient),
-				ashby.New(httpClient), himalayas.New()),
+				ashby.New(httpClient), himalayas.New(),
+				jobicy.New(), remoteok.New(), remotive.New(), devglobaljobs.New()),
 			Log: log,
 		},
 		Interval:    cfg.SyncInterval,

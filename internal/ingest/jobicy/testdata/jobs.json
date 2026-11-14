@@ -1,0 +1,78 @@
+{
+ "apiVersion": "2.2.19",
+ "documentationUrl": "https://jobi.cy/apidocs",
+ "friendlyNotice": "Thanks for using Jobicy API! Please ensure Jobicy is clearly credited with a direct link to the source, and all application buttons redirect to the original job URL provided in this feed. That’s all! You might be building something amazing, we wish you the best of luck!",
+ "jobCount": 3,
+ "lastUpdate": "2026-11-14T03:05:13+00:00",
+ "nextCursor": null,
+ "hasMore": false,
+ "appliedFilters": {
+  "count": 3,
+  "tag": "data"
+ },
+ "jobs": [
+  {
+   "id": 155336,
+   "url": "https://jobicy.com/jobs/155336-senior-applied-data-scientist-fleet-intelligence",
+   "jobSlug": "155336-senior-applied-data-scientist-fleet-intelligence",
+   "jobTitle": "Senior Applied Data Scientist, Fleet Intelligence",
+   "companyName": "Fleetio",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2023/07/e571b83c37e0ed5371754d319be16e76.jpeg",
+   "jobIndustry": [
+    "Data Science & Analytics"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "Canada,  Mexico,  USA",
+   "jobLevel": "Senior",
+   "jobExcerpt": "A little about us…Fleetio is a modern software platform that helps thousands of organizations worldwide manage their fleet operations. Transportation technology is a hot market, and we’re leading the charge with raving fans and new customers signing up every day. We raised $450M in our Series D fund…",
+   "jobDescription": "<p>A little about us…Fleetio is a modern software platform that helps thousands of organizations worldwide manage their fleet operations. Transportation technology is a hot market, and we’re leading the charge with raving fans and new customers signing up every day. We raised $450M in our Series D f…",
+   "pubDate": "2026-11-14T03:05:13+00:00"
+  },
+  {
+   "id": 155334,
+   "url": "https://jobicy.com/jobs/155334-director-enterprise-portfolio-management",
+   "jobSlug": "155334-director-enterprise-portfolio-management",
+   "jobTitle": "Director, Enterprise Portfolio Management",
+   "companyName": "Clover Health",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2025/06/8d4e74b3-221.jpg",
+   "jobIndustry": [
+    "Project & Program Management"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "USA",
+   "jobLevel": "Director",
+   "jobExcerpt": "Clover Health’s People Operations team is the strategic force behind our human capital management. We attract and recruit top talent, manage employee lifecycle processes, and foster career development and continuous learning. We’re proud of our data-driven approach to talent engagement and feel priv…",
+   "jobDescription": "<p>Clover Health’s People Operations team is the strategic force behind our human capital management. We attract and recruit top talent, manage employee lifecycle processes, and foster career development and continuous learning. We’re proud of our data-driven approach to talent engagement and feel p…",
+   "pubDate": "2026-11-14T03:05:11+00:00",
+   "salaryMin": 150000,
+   "salaryMax": 195000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  },
+  {
+   "id": 155333,
+   "url": "https://jobicy.com/jobs/155333-regional-sales-manager-mid-market",
+   "jobSlug": "155333-regional-sales-manager-mid-market",
+   "jobTitle": "Regional Sales Manager, Mid-Market",
+   "companyName": "Fleetio",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2023/07/e571b83c37e0ed5371754d319be16e76.jpeg",
+   "jobIndustry": [
+    "Sales"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "USA",
+   "jobLevel": "Director",
+   "jobExcerpt": "A little about us…Fleetio is a modern software platform that helps thousands of organizations worldwide manage their fleet operations. Transportation technology is a hot market, and we’re leading the charge with raving fans and new customers signing up every day. We raised $450M in our Series D fund…",
+   "jobDescription": "<p>A little about us…Fleetio is a modern software platform that helps thousands of organizations worldwide manage their fleet operations. Transportation technology is a hot market, and we’re leading the charge with raving fans and new customers signing up every day. We raised $450M in our Series D f…",
+   "pubDate": "2026-11-14T03:05:10+00:00"
+  }
+ ],
+ "statusCode": 200,
+ "success": true
+}

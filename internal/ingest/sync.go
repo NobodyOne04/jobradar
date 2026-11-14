@@ -121,10 +121,16 @@ func (s *Syncer) sync(ctx context.Context, db DB, q *store.Queries, src store.So
 	if err != nil {
 		return c, "", fmt.Errorf("close expired postings: %w", err)
 	}
-	if failed == 0 && !truncated {
-		// Only a complete, fully stored listing proves the others are gone.
+	feed, isFeed := adapter.(FeedAdapter)
+	if failed == 0 && (isFeed || !truncated) {
+		// Only a complete, fully stored listing proves the others are gone. A feed is never
+		// complete: its postings close once unseen for StaleAfter (ADR 0013).
+		seenSince := run.StartedAt
+		if isFeed {
+			seenSince = run.StartedAt.Add(-feed.StaleAfter())
+		}
 		missing, err := q.ClosePostingsNotSeenSince(ctx, store.ClosePostingsNotSeenSinceParams{
-			SourceID: src.ID, LastSeenAt: run.StartedAt,
+			SourceID: src.ID, LastSeenAt: seenSince,
 		})
 		if err != nil {
 			return c, "", fmt.Errorf("close missing postings: %w", err)

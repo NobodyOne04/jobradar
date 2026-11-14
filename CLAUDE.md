@@ -32,7 +32,8 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/ingest/`: `Adapter` interface and `Registry`, `Syncer` (one source: fetch,
   upsert per posting in a tx, close missing), `Scheduler` (due sources, advisory lock),
   `HTTPClient` (rate limit, retries), normalization and dedup keys; one subpackage per
-  source (`greenhouse/`, `lever/`, `ashby/`, `himalayas/`), each with recorded `testdata/` and its API terms in the
+  source (`greenhouse/`, `lever/`, `ashby/`, `himalayas/`, feeds `jobicy/`, `remoteok/`, `remotive/`,
+  `devglobaljobs/`), each with recorded `testdata/` and its API terms in the
   package doc
 - `internal/profiles/`: schema validation (`Validate`, errors as JSON paths), revisions
   (`AddRevision`: idempotent via jsonb equality, numbered under a row lock), YAML import;
@@ -96,6 +97,11 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
   boards), and expired ones close (`source_postings.expires_at`).
 - A sync closes postings as missing only after a complete, fully stored listing: an adapter
   that stops early returns `ingest.ErrTruncated` with what it got.
+  Feeds (recent-jobs windows) implement `ingest.FeedAdapter` instead: never closed as missing,
+  closed after 30 days unseen (ADR 0013). Never return `ErrTruncated` from a feed: a non-succeeded
+  run is due again every scheduler tick.
+- A source whose terms cap requests implements `ingest.MinIntervaler` (Remotive 6h, Jobicy 1h);
+  a board's credit line goes in `attributions` (`internal/api/jobs.go`), shown by jobradar-web.
 - A new source kind: check its API docs and terms first, record them in the package doc,
   record a trimmed real response in `testdata/`, then register it in `serve`.
 - Ports on the host: 127.0.0.1 only. MLflow UI is 5001 (macOS AirPlay holds 5000); MLflow

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 
 	"github.com/jackc/pgx/v5"
@@ -149,6 +150,18 @@ func (s *Sources) sync(w http.ResponseWriter, r *http.Request) {
 	src, err := s.Queries.GetSource(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		WriteProblem(w, http.StatusNotFound, "source not found", "")
+		return
+	}
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	// Checked here as well as in SyncLocked, so the caller hears about it (ADR 0013).
+	err = ingest.CheckMinInterval(r.Context(), s.Scheduler.Syncer.Pool, s.Scheduler.Syncer.Adapters, src, time.Now())
+	var tooSoon *ingest.TooSoonError
+	if errors.As(err, &tooSoon) {
+		w.Header().Set("Retry-After", strconv.Itoa(int(tooSoon.Wait.Seconds())+1))
+		WriteProblem(w, http.StatusTooManyRequests, "sync too soon", tooSoon.Error())
 		return
 	}
 	if err != nil {

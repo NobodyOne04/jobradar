@@ -51,6 +51,15 @@ syncs it every `SYNC_INTERVAL` (6h). Supported so far:
 | `lever` | the `{site}` in `jobs.lever.co/{site}` | `{"region":"eu"}` for `jobs.eu.lever.co` sites |
 | `ashby` | the `{board}` in `jobs.ashbyhq.com/{board}` (case matters) | none |
 | `himalayas` | a search query, e.g. `data engineer` (a saved search over all remote jobs) | optional filters: `seniority`, `country`, `employment_type`, `timezone`, `company`, `sort` (strings), `worldwide`, `exclude_worldwide` (true/false) |
+| `jobicy` | a title keyword, or `all` (a remote-jobs feed) | optional `geo`, `industry` (Jobicy slugs) |
+| `remoteok` | a tag, e.g. `data`, or `all` | none |
+| `remotive` | a search term, or `all` | optional `category`; synced at most every 6h (its terms) |
+| `devglobaljobs` | a search term, e.g. `data engineer`, or `all` | optional `category`, `country` |
+
+Jobicy, Remote OK, Remotive and Dev Global Jobs are feeds of recent jobs ([ADR 0013](docs/adr/0013-feed-sources.adr)):
+a job that drops out of the feed stays open until no sync has seen it for 30 days. Their jobs
+show "via <board>" next to their link, as their terms require; Jobicy syncs at most hourly and
+Remotive every 6h (a manual sync sooner gets 429).
 
 A Himalayas search stops at 500 jobs; a broader one is stored up to that and its run is
 marked `partial` ("narrow the search"). Himalayas' terms apply to its jobs: apply through the
