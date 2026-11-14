@@ -1,0 +1,63 @@
+{
+ "uuid": "84d388b6-7656-434c-8862-0312eb6b97ac",
+ "name": "Business Operations Manager",
+ "description": {
+  "company": "<div><body><h2 style='font-family:\"Basel Grotesk\",Arial,sans-serif;line-height:1.6;font-size:15pt;font-weight:600;letter-spacing:0.5px;margin-top:18px;margin-bottom:4px;padding-left:0px;'><b><strong style=\"white-space:pre-wrap;\">About Rippling</strong></b></h2><p style='font-family:\"Basel Grotesk\",A…",
+  "role": "<div><body><p style='font-family:\"Basel Grotesk\",Arial,sans-serif;font-size:11pt;font-weight:400;line-height:1.6;letter-spacing:0.25px;margin:4px 0px;padding:0px;'><br></p><h2 style='font-family:\"Basel Grotesk\",Arial,sans-serif;line-height:1.6;font-size:29pt;font-weight:600;letter-spacing:0.5px;marg…"
+ },
+ "workLocations": [
+  "San Francisco, CA",
+  "New York, NY"
+ ],
+ "department": {
+  "name": "Bizops",
+  "base_department": "Bizops",
+  "department_tree": [
+   "Bizops"
+  ]
+ },
+ "employmentType": {
+  "label": "SALARIED_FT",
+  "id": "Salaried, full-time"
+ },
+ "createdOn": "2026-03-31T17:37:26.093000-07:00",
+ "activeJobApplication": null,
+ "eeocQuestionnaireEnabled": true,
+ "eeocQuestionnaireEnabledForJobPost": true,
+ "url": "https://ats.rippling.com/rippling/jobs/84d388b6-7656-434c-8862-0312eb6b97ac",
+ "board": {
+  "boardType": "CUSTOM",
+  "slug": "rippling",
+  "logo": null,
+  "banner": null,
+  "title": "Current Openings",
+  "subtitle": null,
+  "boardURL": "http://www.rippling.com/careers/open-roles",
+  "fontType": null,
+  "linkColor": null,
+  "buttonColor": null,
+  "buttonTextColor": null,
+  "legalNotice": "<meta name=\"rteConfig\" content=\"{&quot;version&quot;:&quot;0.410.0&quot;,&quot;producedBy&quot;:&quot;block&quot;,&quot;themeName&quot;:&quot;berry&quot;}\"><p style=\"font-family:&quot;Basel Grotesk&quot;,Arial,sans-serif;font-size:11pt;font-weight:400;line-height:1.6;letter-spacing:0.25px;margin:4px 0px;padding:0px;text-align:left;\"><a href=\"https://www.rippling.com/immigration-policy\" target=\"_blank\" class=\"css-173makr-linkStyle\" style=\"color:rgb(30,74,169);cursor:pointer;\"><span style=\"white-space:pre-wrap;\">Rippling's Immigration Policy</span></a></p><p style=\"font-family:&quot;Basel Grotesk&quot;,Arial,sans-serif;font-size:11pt;font-weight:400;line-height:1.6;letter-spacing:0.25px;margin:4px 0px;padding:0px;text-align:left;\"><br></p><p style=\"font-family:&quot;Basel Grotesk&quot;,Arial,sans-serif;font-size:11pt;font-weight:400;line-height:1.6;letter-spacing:0.25px;margin:4px 0px;padding:0px;text-align:left;\"><span style=\"white-space:pre-wrap;\">This posting is to fill a vacancy on our team, unless otherwise noted.</span><br><br></p><p style=\"font-family:&quot;Basel Grotesk&quot;,Arial,sans-serif;font-size:11pt;font-weight:400;line-height:1.6;letter-spacing:0.25px;margin:4px 0px;padding:0px;text-align:left;\"><span style=\"font-size:11.25pt;white-space:pre-wrap;\">By clicking \"Apply\" you agree to&nbsp;</span><a href=\"https://app.rippling.com/legal/employee-privacy\" target=\"_blank\" class=\"css-173makr-linkStyle\" style=\"color:rgb(30,74,169);cursor:pointer;\"><span style=\"white-space:pre-wrap;\">Rippling's Employees, Candidates, and Workers Privacy Notice</span></a><span style=\"font-size:11.25pt;white-space:pre-wrap;\">.&nbsp;</span></p><p style=\"font-family:&quot;Basel Grotesk&quot;,Arial,sans-serif;font-size:11pt;font-weight:400;line-height:1.6;letter-spacing:0.25px;margin:4px 0px;padding:0px;\"><br></p>",
+  "noOpeningsMessage": null,
+  "groupJobsByLocation": false,
+  "showBoardLogoOnJobPost": false,
+  "showCompanyInfoUnderJobPost": false,
+  "companyName": "Rippling",
+  "isTest": false
+ },
+ "payRangeDetails": [
+  {
+   "location": "US",
+   "currency": "USD",
+   "frequency": "YEAR",
+   "rangeStart": 185000.0,
+   "rangeEnd": 240000.0,
+   "isRemote": false
+  }
+ ],
+ "applicationConfirmationTemplate": "6348729c5a9a6e6df0bb6f64",
+ "hasAIEvaluationsEnabled": true,
+ "companyName": "Rippling",
+ "unlistedFromSearch": false,
+ "jsonLd": null
+}

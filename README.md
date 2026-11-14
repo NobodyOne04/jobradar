@@ -55,6 +55,18 @@ syncs it every `SYNC_INTERVAL` (6h). Supported so far:
 | `remoteok` | a tag, e.g. `data`, or `all` | none |
 | `remotive` | a search term, or `all` | optional `category`; synced at most every 6h (its terms) |
 | `devglobaljobs` | a search term, e.g. `data engineer`, or `all` | optional `category`, `country` |
+| `smartrecruiters` | the `{company}` in `jobs.smartrecruiters.com/{company}` (case matters) | none |
+| `workable` | the `{account}` in `apply.workable.com/{account}` | none |
+| `recruitee` | the `{company}` in `{company}.recruitee.com` | none |
+| `personio` | the `{company}` in `{company}.jobs.personio.de` | `{"domain":"com"}` for `jobs.personio.com` boards |
+| `breezy` | the `{company}` in `{company}.breezy.hr` | none (its jobs have no description) |
+| `teamtailor` | the career site's host, e.g. `career.teamtailor.com` or `careers.example.com` | none |
+| `rippling` | the `{board}` in `ats.rippling.com/{board}/jobs` | none |
+
+A first sync that finds no jobs at a company says "check board_token" in its run (an unknown
+SmartRecruiters company looks empty rather than failing). SmartRecruiters and Rippling need one
+request per new or changed job, so a big board's first sync takes a while
+([ADR 0014](docs/adr/0014-more-ats-sources.adr)).
 
 Jobicy, Remote OK, Remotive and Dev Global Jobs are feeds of recent jobs ([ADR 0013](docs/adr/0013-feed-sources.adr)):
 a job that drops out of the feed stays open until no sync has seen it for 30 days. Their jobs

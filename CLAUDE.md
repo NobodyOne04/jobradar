@@ -32,7 +32,8 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/ingest/`: `Adapter` interface and `Registry`, `Syncer` (one source: fetch,
   upsert per posting in a tx, close missing), `Scheduler` (due sources, advisory lock),
   `HTTPClient` (rate limit, retries), normalization and dedup keys; one subpackage per
-  source (`greenhouse/`, `lever/`, `ashby/`, `himalayas/`, feeds `jobicy/`, `remoteok/`, `remotive/`,
+  source (`greenhouse/`, `lever/`, `ashby/`, `smartrecruiters/`, `workable/`, `recruitee/`, `personio/`,
+  `breezy/`, `teamtailor/`, `rippling/`, `himalayas/`, feeds `jobicy/`, `remoteok/`, `remotive/`,
   `devglobaljobs/`), each with recorded `testdata/` and its API terms in the
   package doc
 - `internal/profiles/`: schema validation (`Validate`, errors as JSON paths), revisions
@@ -100,6 +101,12 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
   Feeds (recent-jobs windows) implement `ingest.FeedAdapter` instead: never closed as missing,
   closed after 30 days unseen (ADR 0013). Never return `ErrTruncated` from a feed: a non-succeeded
   run is due again every scheduler tick.
+- A list without descriptions: implement `ingest.Enricher`; the sync calls it only for new or
+  changed list entries (`RawPosting.ListHash`). XML sources store each item as JSON (`raw_payload`
+  is jsonb). A board_token that goes into a URL host or path needs `ingest.BoardTokenValidator`
+  (`ingest.ValidSlug`); a whole host (Teamtailor) must refuse IPs, ports and internal names.
+- An empty first sync of a company board stays `succeeded` with a "check board_token" note
+  (never `partial`: a non-succeeded run is due again every tick).
 - A source whose terms cap requests implements `ingest.MinIntervaler` (Remotive 6h, Jobicy 1h);
   a board's credit line goes in `attributions` (`internal/api/jobs.go`), shown by jobradar-web.
 - A new source kind: check its API docs and terms first, record them in the package doc,

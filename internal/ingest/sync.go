@@ -48,7 +48,7 @@ func (s *Syncer) SyncOn(ctx context.Context, db DB, src store.Source) (Counts, e
 	}
 	log := s.Log.With("source_id", src.ID, "kind", src.Kind, "sync_run_id", run.ID)
 
-	counts, partial, err := s.sync(ctx, db, q, src, run, log)
+	counts, partial, warning, err := s.sync(ctx, db, q, src, run, log)
 	status := "succeeded"
 	var errText *string
 	switch {
@@ -59,6 +59,8 @@ func (s *Syncer) SyncOn(ctx context.Context, db DB, src store.Source) (Counts, e
 	case partial != "":
 		status = "partial"
 		errText = &partial
+	case warning != "":
+		errText = &warning // still succeeded: a partial run would be retried every tick
 	}
 	// Record the outcome even if ctx was cancelled (shutdown): use a fresh context.
 	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultDBTimeout)
@@ -81,24 +83,31 @@ func (s *Syncer) SyncOn(ctx context.Context, db DB, src store.Source) (Counts, e
 }
 
 // sync does the work of SyncOn. partial is non-empty, and says why, when the run stored what
-// it could but must not count as complete.
+// it could but must not count as complete. warning is a note on a complete run.
 func (s *Syncer) sync(ctx context.Context, db DB, q *store.Queries, src store.Source, run store.SyncRun,
-	log *slog.Logger) (c Counts, partial string, err error) {
+	log *slog.Logger) (c Counts, partial, warning string, err error) {
 	adapter, err := s.Adapters.Get(src.Kind)
 	if err != nil {
-		return c, "", err
+		return c, "", "", err
 	}
 	postings, err := adapter.Fetch(ctx, src)
 	truncated := errors.Is(err, ErrTruncated)
 	if err != nil && !truncated {
-		return c, "", fmt.Errorf("fetch: %w", err)
+		return c, "", "", fmt.Errorf("fetch: %w", err)
 	}
 	c.Fetched = int32(len(postings))
 
 	failed := 0
 	for _, raw := range postings {
 		if ctx.Err() != nil {
-			return c, "", ctx.Err()
+			return c, "", "", ctx.Err()
+		}
+		if en, ok := adapter.(Enricher); ok {
+			if raw, err = enrich(ctx, q, en, src, raw); err != nil {
+				failed++
+				log.Warn("posting not enriched", "external_id", raw.ExternalID, "error", err)
+				continue
+			}
 		}
 		result, err := s.upsert(ctx, db, adapter, src, raw)
 		if err != nil {
@@ -119,7 +128,7 @@ func (s *Syncer) sync(ctx context.Context, db DB, q *store.Queries, src store.So
 	// Expired postings close on every run: expiry is the source's own word, not an inference.
 	jobIDs, err := q.ClosePostingsExpired(ctx, src.ID)
 	if err != nil {
-		return c, "", fmt.Errorf("close expired postings: %w", err)
+		return c, "", "", fmt.Errorf("close expired postings: %w", err)
 	}
 	feed, isFeed := adapter.(FeedAdapter)
 	if failed == 0 && (isFeed || !truncated) {
@@ -133,7 +142,7 @@ func (s *Syncer) sync(ctx context.Context, db DB, q *store.Queries, src store.So
 			SourceID: src.ID, LastSeenAt: seenSince,
 		})
 		if err != nil {
-			return c, "", fmt.Errorf("close missing postings: %w", err)
+			return c, "", "", fmt.Errorf("close missing postings: %w", err)
 		}
 		jobIDs = append(jobIDs, missing...)
 	}
@@ -143,13 +152,20 @@ func (s *Syncer) sync(ctx context.Context, db DB, q *store.Queries, src store.So
 	case truncated:
 		partial = "listing truncated: only the first postings were fetched, so none were closed as missing; narrow the search"
 	}
+	if c.Fetched == 0 && !isFeed && partial == "" {
+		// An unknown board can look like an empty one (SmartRecruiters answers 200): say so
+		// on the first run, when a typo is most likely (ADR 0014).
+		if runs, err := q.ListRuns(ctx, store.ListRunsParams{SourceID: src.ID, Limit: 2}); err == nil && len(runs) == 1 {
+			warning = "no postings on the first sync: check board_token"
+		}
+	}
 	c.Closed = int32(len(jobIDs))
 	if len(jobIDs) > 0 {
 		if _, err := q.CloseJobsWithoutOpenPostings(ctx, jobIDs); err != nil {
-			return c, "", fmt.Errorf("close jobs: %w", err)
+			return c, "", "", fmt.Errorf("close jobs: %w", err)
 		}
 	}
-	return c, partial, nil
+	return c, partial, warning, nil
 }
 
 type upsertResult int
@@ -168,7 +184,10 @@ func (s *Syncer) upsert(ctx context.Context, db DB, a Adapter, src store.Source,
 	}
 	defer func() { _ = tx.Rollback(ctx) }() // no-op after Commit
 	q := store.New(tx)
-	payloadHash := PayloadHash(raw.Payload)
+	payloadHash := raw.ListHash
+	if payloadHash == "" {
+		payloadHash = PayloadHash(raw.Payload)
+	}
 
 	existing, err := q.GetPosting(ctx, store.GetPostingParams{SourceID: src.ID, ExternalID: raw.ExternalID})
 	exists := err == nil // decided here: err is reused below

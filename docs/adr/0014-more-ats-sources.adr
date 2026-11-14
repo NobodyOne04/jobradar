@@ -1,0 +1,69 @@
+# 0014. More company boards: SmartRecruiters, Workable, Recruitee, Personio, Breezy, Teamtailor, Rippling
+
+- Status: Accepted
+- Date: 2026-11-14
+
+Seven more ATS platforms from `docs/sources.json` become source kinds. They are company
+boards like Greenhouse: a source is one company, its fetch is the full list, and ADR 0005's
+"close when missing" rule applies unchanged. Two of them serve XML, which is stored as JSON.
+
+## Technical details
+
+**Kinds** (board_token = the company's identifier on that platform):
+
+| kind | list endpoint | notes |
+|---|---|---|
+| `smartrecruiters` | `api.smartrecruiters.com/v1/companies/{id}/postings` (offset/limit 100) | description needs one detail request per new or changed posting |
+| `workable` | `apply.workable.com/api/v1/widget/accounts/{slug}?details=true` | |
+| `recruitee` | `{slug}.recruitee.com/api/offers/` | |
+| `personio` | `{slug}.jobs.personio.de/xml?language=en` | XML; config `{"domain":"com"}` for jobs.personio.com |
+| `breezy` | `{slug}.breezy.hr/json` | the list has no description and there is no JSON detail: normalized with an empty one |
+| `teamtailor` | `https://{host}/jobs.rss` | board_token is the career host (custom domain or `career.teamtailor.com`) |
+| `rippling` | `ats.rippling.com/api/v2/board/{slug}/jobs?page=N`, then `.../jobs/{id}` | paged; a job repeats once per location (merged); description, pay and type only in the detail; undocumented by Rippling |
+
+- Each adapter follows ADR 0005: docs and terms checked and recorded in its package doc, a
+  trimmed real response in `testdata/`, `Normalize` tested on it.
+- **XML (Personio, Teamtailor).** `encoding/xml` decodes each position or item into a Go
+  struct, which is marshalled as that posting's JSON `Payload`. `raw_payload` stays JSON,
+  `payload_hash` works as for every other kind. No new dependency.
+- **Board tokens are validated** when a source is created (`ingest.BoardTokenValidator`) and
+  again in `Fetch`: a company identifier (letters, digits, `-`, `_`) for six kinds, since it
+  goes into a URL host or path; for Teamtailor a public DNS host name, refusing IPs, ports,
+  paths and single-label or `.local`/`.internal` names, so a source cannot point the backend
+  at itself or the compose network.
+- **Empty first sync.** SmartRecruiters answers 200 with no postings for an unknown company,
+  so a typo would look like an empty board. For every company board (not feeds), a first sync
+  with 0 postings records "no postings on the first sync: check board_token" on the run.
+  Later empty runs are normal (a company with no openings).
+  - *Changed during implementation (2026-11-14):* the run stays `succeeded` with that note,
+    instead of `partial` as drafted: the scheduler re-runs any source without a recent
+    `succeeded` run on every tick, so `partial` would call the company's API every minute.
+    It applies to all company boards, not only the seven: an empty first run is equally
+    suspicious on Greenhouse.
+- **Detail requests (SmartRecruiters, Rippling): `ingest.Enricher`.** The sync, not the
+  adapter, compares each list entry's hash with the stored `payload_hash`, and calls
+  `Enrich(ctx, src, raw)` only for new or changed entries. The enriched posting is stored as
+  `raw_payload`, the list entry's hash as `payload_hash` (`RawPosting.ListHash`), so a steady
+  board costs only its list requests. A failed detail request counts as a posting that could
+  not be stored (the run is `partial`, nothing closed as missing).
+  - *Changed during implementation:* the draft had the adapter decide; it cannot see stored
+    hashes, so the sync does it.
+- **Migration** `00009_more_ats_sources.sql`: the `sources.kind` CHECK adds the seven kinds;
+  `sourceKinds` grows to match. `remote_policy` and `employment_type` only from structured
+  fields; otherwise `unknown` (a `remote: false` flag alone is not proof of an office job).
+  Each package doc records the API, terms and data notes; `testdata/` has a trimmed real
+  response. Checked live on 2026-11-14 against Ubisoft (SmartRecruiters), Hugging Face
+  (Workable), bunq (Recruitee), Personio, Breezy's demo board, Teamtailor and Rippling.
+
+**Order.** After 0013 (both edit the kind CHECK and `sourceKinds`). One PR each.
+
+**Consequences.** A big board's first sync is slow with detail requests (Bosch lists ~5,000
+on SmartRecruiters: ~45 minutes at the shared 2 requests a second); later syncs are list
+calls only. Breezy jobs are matched on title, location and type alone.
+
+## Technologies and alternatives
+- Involved: stdlib `net/http`, `encoding/json`, `encoding/xml`; the existing `ingest.HTTPClient`.
+- Alternatives:
+  - Store XML as text: `raw_payload` is `jsonb`; would need a second column and hashing path.
+  - Workday, BambooHR and the others: removed in the catalog (no stable endpoint).
+  - Working Nomads, We Work Remotely, Adzuna, Findwork: disabled in the catalog until terms or keys are settled; not in this ADR.

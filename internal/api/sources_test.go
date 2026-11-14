@@ -17,6 +17,8 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
 	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
 	"github.com/NobodyOne04/jobradar/internal/ingest/remotive"
+	"github.com/NobodyOne04/jobradar/internal/ingest/smartrecruiters"
+	"github.com/NobodyOne04/jobradar/internal/ingest/teamtailor"
 	"github.com/NobodyOne04/jobradar/internal/store"
 	"github.com/NobodyOne04/jobradar/internal/testdb"
 )
@@ -149,5 +151,28 @@ func TestManualSyncRespectsMinInterval(t *testing.T) {
 	}
 	if n, _ := strconv.Atoi(rec.Header().Get("Retry-After")); n < 5*3600 {
 		t.Errorf("Retry-After %d s, want about 6h", n)
+	}
+}
+
+func TestCreateSourceValidatesBoardToken(t *testing.T) {
+	st := testdb.Migrated(t)
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	sched := &ingest.Scheduler{Syncer: &ingest.Syncer{Pool: st.Pool,
+		Adapters: ingest.NewRegistry(teamtailor.New(nil), smartrecruiters.New(nil)), Log: log}, Concurrency: 1, Log: log}
+	s := &Sources{Queries: store.New(st.Pool), Scheduler: sched, Log: log, Background: context.Background()}
+	h := NewHandler(log, readyOK, 5*time.Second, []string{"example.com"}, s.Register)
+
+	for body, want := range map[string]int{
+		`{"kind":"teamtailor","board_token":"localhost"}`:             http.StatusUnprocessableEntity,
+		`{"kind":"teamtailor","board_token":"10.0.0.1"}`:              http.StatusUnprocessableEntity,
+		`{"kind":"smartrecruiters","board_token":"a/../b"}`:           http.StatusUnprocessableEntity,
+		`{"kind":"teamtailor","board_token":"career.teamtailor.com"}`: http.StatusCreated,
+		`{"kind":"smartrecruiters","board_token":"BoschGroup"}`:       http.StatusCreated,
+	} {
+		if rec := do(h, "POST", "/api/v1/sources", body); rec.Code != want {
+			t.Errorf("%s: %d %s, want %d", body, rec.Code, rec.Body, want)
+		} else if want != http.StatusCreated && !strings.Contains(rec.Body.String(), "board_token:") {
+			t.Errorf("%s: problem does not name board_token: %s", body, rec.Body)
+		}
 	}
 }

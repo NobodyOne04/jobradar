@@ -23,13 +23,20 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/config"
 	"github.com/NobodyOne04/jobradar/internal/ingest"
 	"github.com/NobodyOne04/jobradar/internal/ingest/ashby"
+	"github.com/NobodyOne04/jobradar/internal/ingest/breezy"
 	"github.com/NobodyOne04/jobradar/internal/ingest/devglobaljobs"
 	"github.com/NobodyOne04/jobradar/internal/ingest/greenhouse"
 	"github.com/NobodyOne04/jobradar/internal/ingest/himalayas"
 	"github.com/NobodyOne04/jobradar/internal/ingest/jobicy"
 	"github.com/NobodyOne04/jobradar/internal/ingest/lever"
+	"github.com/NobodyOne04/jobradar/internal/ingest/personio"
+	"github.com/NobodyOne04/jobradar/internal/ingest/recruitee"
 	"github.com/NobodyOne04/jobradar/internal/ingest/remoteok"
 	"github.com/NobodyOne04/jobradar/internal/ingest/remotive"
+	"github.com/NobodyOne04/jobradar/internal/ingest/rippling"
+	"github.com/NobodyOne04/jobradar/internal/ingest/smartrecruiters"
+	"github.com/NobodyOne04/jobradar/internal/ingest/teamtailor"
+	"github.com/NobodyOne04/jobradar/internal/ingest/workable"
 	"github.com/NobodyOne04/jobradar/internal/matcher"
 	"github.com/NobodyOne04/jobradar/internal/matching"
 	"github.com/NobodyOne04/jobradar/internal/profiles"
@@ -165,7 +172,9 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger, st *store.S
 			Pool: st.Pool,
 			Adapters: ingest.NewRegistry(greenhouse.New(httpClient), lever.New(httpClient),
 				ashby.New(httpClient), himalayas.New(),
-				jobicy.New(), remoteok.New(), remotive.New(), devglobaljobs.New()),
+				jobicy.New(), remoteok.New(), remotive.New(), devglobaljobs.New(),
+				smartrecruiters.New(httpClient), workable.New(httpClient), recruitee.New(httpClient),
+				personio.New(httpClient), breezy.New(httpClient), teamtailor.New(httpClient), rippling.New(httpClient)),
 			Log: log,
 		},
 		Interval:    cfg.SyncInterval,
