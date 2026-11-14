@@ -40,6 +40,9 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `internal/applications/`: `Transition` (all status rules in one function) and `Service.Set`
   (status + event in one tx, idempotent); `internal/api/applications.go`: /api/v1/applications,
   /api/v1/labels/export (personal data: never logged)
+- `docs/sources.json`: reviewed catalog of candidate source kinds (job-board APIs, ATS
+  platforms), each live-checked, with its terms; `implemented_in_jobradar` marks existing adapters.
+  Not read by the code: a new kind still follows the "new source kind" rule below
 - `docs/api/profile.schema.json`: the profile contract, embedded by `docs/api/embed.go`
   (package `apidocs`); a schema change means a new `schema_version`, never an edit of v1
 - `profiles/example.yaml`: a fictional profile; real ones (`profiles/*.yaml`) are git-ignored
