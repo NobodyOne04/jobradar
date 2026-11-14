@@ -85,3 +85,20 @@ func TestFetchSkipsJobsPastClosingDate(t *testing.T) {
 		t.Fatalf("got %d, err %v", len(got), err)
 	}
 }
+
+func TestEscapedDescriptionIsUnescaped(t *testing.T) {
+	a := New()
+	for payload, want := range map[string]string{
+		`{"id":1,"title":"x","description":"&lt;p&gt;At Lyft &amp;amp; co&lt;/p&gt;"}`: "<p>At Lyft &amp; co</p>",
+		`{"id":2,"title":"x","description":"<p>Fish &amp; chips</p>"}`:                 "<p>Fish &amp; chips</p>",
+		`{"id":3,"title":"x","description":"Plain text, 3 &lt; 5"}`:                    "Plain text, 3 < 5",
+	} {
+		n, err := a.Normalize(ingest.RawPosting{Payload: json.RawMessage(payload)})
+		if err != nil || n.DescriptionHTML != want {
+			t.Errorf("%s: got %q, %v; want %q", payload, n.DescriptionHTML, err, want)
+		}
+		if text := ingest.HTMLToText(n.DescriptionHTML); strings.Contains(text, "<p>") {
+			t.Errorf("%s: text still has tags: %q", payload, text)
+		}
+	}
+}

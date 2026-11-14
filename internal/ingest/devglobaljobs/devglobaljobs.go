@@ -18,7 +18,8 @@
 // It is a feed (ingest.FeedAdapter): it reads the newest MaxJobs, and postings close only
 // after 30 days unseen, or at the job's closingDate (expires_at), whichever comes first.
 //
-// Notes on the data: salary is free text, so it stays unknown (ADR 0005). country is an
+// Notes on the data: some descriptions arrive HTML-escaped once (&lt;p&gt;, about 1 in 6 on
+// 2026-11-14) and are unescaped here, as Greenhouse's are. Salary is free text, so it stays unknown (ADR 0005). country is an
 // ISO code, "Remote", or null; only "Remote" makes remote_policy remote.
 package devglobaljobs
 
@@ -26,6 +27,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"strconv"
 	"strings"
 	"time"
@@ -161,7 +163,7 @@ func (*Adapter) Normalize(raw ingest.RawPosting) (ingest.NormalizedJob, error) {
 	n := ingest.NormalizedJob{
 		Title:           j.Title,
 		CompanyName:     j.Organization,
-		DescriptionHTML: j.Description,
+		DescriptionHTML: description(j.Description),
 		RemotePolicy:    "unknown",
 		EmploymentType:  "unknown",
 	}
@@ -186,4 +188,13 @@ func (*Adapter) Normalize(raw ingest.RawPosting) (ingest.NormalizedJob, error) {
 		n.PostedAt = &t
 	}
 	return n, nil
+}
+
+// description unescapes a description that came HTML-escaped (no tags, but &lt; entities), so
+// its tags are stripped like any other; an already-HTML one is left as is.
+func description(s string) string {
+	if !strings.Contains(s, "<") && strings.Contains(s, "&lt;") {
+		return html.UnescapeString(s)
+	}
+	return s
 }
