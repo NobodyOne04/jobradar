@@ -77,7 +77,7 @@ func jobsFixture(t *testing.T) (*store.Store, map[string]int64) {
 	} {
 		posted := day.Add(time.Duration(i) * 24 * time.Hour)
 		id, err := q.InsertJob(ctx, store.InsertJobParams{Title: c.title, CompanyName: "Acme", CompanyKey: "acme",
-			DescriptionText: c.text, RemotePolicy: c.remote, Countries: []string{}, EmploymentType: "full_time",
+			DescriptionText: c.text, DescriptionHtml: "<p>" + c.text + "</p>", RemotePolicy: c.remote, Countries: []string{}, EmploymentType: "full_time",
 			PostedAt: &posted, ContentHash: "h", DedupKey: c.title})
 		if err != nil {
 			t.Fatal(err)
@@ -198,7 +198,7 @@ func TestJobDetail(t *testing.T) {
 
 	d := get(ids["Senior Data Engineer"])
 	match := d["match"].(map[string]any)
-	if d["description_text"] != "Build Kafka pipelines" || match["band"] != "strong" || match["stale"] != false ||
+	if d["description_text"] != "Build Kafka pipelines" || d["description_html"] != "<p>Build Kafka pipelines</p>" || match["band"] != "strong" || match["stale"] != false ||
 		match["explanations"].([]any)[0] != "Missing required: Flink" {
 		t.Errorf("detail: %v", d)
 	}

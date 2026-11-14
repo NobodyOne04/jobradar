@@ -306,7 +306,10 @@ func (j *Jobs) get(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id": job.ID, "title": job.Title, "company_name": job.CompanyName,
-		"description_text": job.DescriptionText, "location_text": job.LocationText,
+		// The board's HTML as normalized (ADR 0005), for display: clients must sanitize it, as it
+		// comes from external boards. description_text stays the plain form.
+		"description_text": job.DescriptionText, "description_html": job.DescriptionHtml,
+		"location_text": job.LocationText,
 		"remote_policy": job.RemotePolicy, "countries": job.Countries,
 		"employment_type": job.EmploymentType, "posted_at": job.PostedAt, "closed_at": job.ClosedAt,
 		"salary":      salaryOf(job.SalaryMin, job.SalaryMax, job.SalaryCurrency, job.SalaryPeriod),

@@ -137,7 +137,7 @@ curl 'localhost:8080/api/v1/jobs?q=data+engineer&remote=remote&min_score=60'
 curl 'localhost:8080/api/v1/jobs?band=strong&band=good&sort=posted'
 curl 'localhost:8080/api/v1/jobs?status=discovered&source=lever'
 curl 'localhost:8080/api/v1/jobs?cursor=<next_cursor from the previous page>'
-curl localhost:8080/api/v1/jobs/42        # description, why it matched, your history
+curl localhost:8080/api/v1/jobs/42        # description (text and HTML), why it matched, your history
 ```
 
 Filters: `q` (full-text: title, company, description), `band` (repeatable), `min_score`,
