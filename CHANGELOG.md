@@ -12,6 +12,7 @@
 - Empty source and run lists are `[]` instead of `null`
 
 ### Added
+- Feed sources Jobicy, Remote OK, Remotive and Dev Global Jobs: saved feed filters, jobs close after 30 days unseen, "via <board>" attribution, Remotive at most every 6h and Jobicy hourly (manual syncs get 429 sooner) (ADR 0013)
 - Web UI at http://localhost:3000 (repo `jobradar-web`, compose service `web`): job list with filters, job page with match details and status buttons (ADR 0012)
 - Job search API: `/api/v1/jobs` with each job's match and application status, full-text search, filters, sort by score or date, keyset pages; `/api/v1/jobs/{id}` with explanations and history; Himalayas attribution (ADR 0011)
 - Matching loop: follows MLflow's `champion` (an audit row per change, last one kept while MLflow is down), scores new and changed jobs in batches of 50 with the champion, keeps results per model version (instant rollback), circuit breaker, `/api/v1/models` and `/api/v1/models/activations`, matching metrics; compose `matcher-train` service for train/promote/models

@@ -18,3 +18,4 @@ Matcher-internal decisions live in `jobradar-matcher/docs/adr/`.
 | [0010](0010-matching-mlflow-model-lifecycle.adr) | Matching orchestration with MLflow: the `champion` alias decides the live model | Accepted |
 | [0011](0011-job-search-api.adr) | Job search API: jobs with their match and application status, keyset pages | Accepted |
 | [0012](0012-web-ui.adr) | Web UI: static HTML+JS in its own repo, served by nginx on the same origin | Accepted |
+| [0013](0013-feed-sources.adr) | Feed sources: Jobicy, Remote OK, Remotive, Dev Global Jobs; closed after 30 days unseen | Accepted |

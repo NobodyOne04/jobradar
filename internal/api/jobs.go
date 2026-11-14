@@ -36,8 +36,14 @@ func (j *Jobs) Register(mux *http.ServeMux) {
 var (
 	bands       = []string{"strong", "good", "weak", "excluded"}
 	remotes     = []string{"remote", "hybrid", "onsite", "unknown"}
-	sourceKinds = []string{"greenhouse", "lever", "ashby", "himalayas"}
-	sorts       = []string{"score", "posted", "updated"}
+	sourceKinds = []string{"greenhouse", "lever", "ashby", "himalayas", "jobicy", "remoteok", "remotive", "devglobaljobs"}
+	// attributions are the source credits the boards' terms require next to their link
+	// (Himalayas terms §113 (b); ADR 0013). Company boards need none.
+	attributions = map[string]string{
+		"himalayas": "via Himalayas", "jobicy": "via Jobicy", "remoteok": "via Remote OK",
+		"remotive": "via Remotive", "devglobaljobs": "via Dev Global Jobs",
+	}
+	sorts = []string{"score", "posted", "updated"}
 )
 
 type source struct {
@@ -229,10 +235,7 @@ func (j *Jobs) sources(r *http.Request, ids []int64, includeClosed bool) (map[in
 		if row.Closed && !includeClosed {
 			continue
 		}
-		s := source{Kind: row.Kind, URL: row.Url, Closed: row.Closed}
-		if row.Kind == "himalayas" {
-			s.Attribution = "via Himalayas" // Himalayas terms §113 (b): show the source, link it
-		}
+		s := source{Kind: row.Kind, URL: row.Url, Closed: row.Closed, Attribution: attributions[row.Kind]}
 		out[row.JobID] = append(out[row.JobID], s)
 	}
 	return out, nil

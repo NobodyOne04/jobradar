@@ -80,14 +80,15 @@
       "enabled": true,
       "priority": "P0",
       "base_url": "https://jobicy.com",
-      "endpoint": "https://jobicy.com/api/v2/remote-jobs",
+      "endpoint": "https://jobicy.com/api/jobs",
       "documentation": "https://jobicy.com/jobs-rss-feed",
       "method": "GET",
       "format": "json",
       "authentication": "none",
       "pagination": {
-        "type": "none",
-        "max_items_per_request": 100
+        "type": "cursor",
+        "response_cursor_field": "nextCursor",
+        "window": "7 days"
       },
       "data": [
         "title",
@@ -109,7 +110,7 @@
         "date": "2026-11-14",
         "result": "200, 100 jobs; about a third tech roles"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "Credit Jobicy with a direct link to the source",
         "Apply buttons must go to the job URL from the feed"
@@ -150,7 +151,7 @@
         "date": "2026-11-14",
         "result": "200, 97 jobs; element 0 is the legal notice"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "Link back (followed link, no nofollow) to the Remote OK URL",
         "Mention 'Remote OK' as the source",
@@ -191,7 +192,7 @@
         "date": "2026-11-14",
         "result": "200, 16 jobs; jobs delayed 24h"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "Link back to the Remotive URL and name Remotive as the source",
         "Never submit Remotive jobs to third-party sites (Jooble, Google Jobs, LinkedIn...)",
@@ -218,14 +219,15 @@
         ]
       },
       "notes": [
-        "Free display API; terms are in every response's meta.license"
+        "Free display API; terms are in every response's meta.license",
+        "Global board, not remote-only; the list has an excerpt, /api/v1/jobs/{id} the full description"
       ],
       "verification": {
         "status": "live_checked",
         "date": "2026-11-14",
         "result": "200, 25 per page of ~112k; mostly dev roles"
       },
-      "implemented_in_jobradar": false,
+      "implemented_in_jobradar": true,
       "terms": [
         "Show a visible 'Powered by Dev Global Jobs' link to https://devglobaljobs.com",
         "Keep each job's link"

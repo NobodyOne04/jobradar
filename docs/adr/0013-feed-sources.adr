@@ -1,0 +1,87 @@
+# 0013. Feed sources: Jobicy, Remote OK, Remotive and Dev Global Jobs, closed after 30 days unseen
+
+- Status: Accepted
+- Date: 2026-11-14
+
+Four remote-job feeds from `docs/sources.json` become source kinds. Unlike company boards,
+they list only recent jobs, so "missing from the list" cannot mean "closed". This ADR decides
+how such postings close, how their attribution terms are met, and how Remotive's request
+limit is enforced.
+
+## Technical details
+
+**Problem.** ADR 0005 closes a posting when a complete listing no longer has it. These feeds
+are a window of recent jobs (Remote OK ~100, Jobicy ≤100, Remotive ~16 and delayed 24h, Dev
+Global Jobs paged over ~112k): a job drops out while still open. Treated as truncated
+(`ErrTruncated`), nothing would ever close them.
+
+**Kinds and what a source row means** (like Himalayas: a row is a saved feed filter):
+
+| kind | endpoint | board_token | config |
+|---|---|---|---|
+| `jobicy` | `GET https://jobicy.com/api/jobs?count=100`, cursor pages over a 7-day window | `tag` (e.g. `data engineer`), or `all` | `geo`, `industry` |
+| `remoteok` | `GET https://remoteok.com/api` (`?tag=`) | `tag` (e.g. `data`), or `all` | none |
+| `remotive` | `GET https://remotive.com/api/remote-jobs` | `search` term, or `all` | `category` |
+| `devglobaljobs` | `GET https://devglobaljobs.com/api/v1/jobs` (offset/limit), then `/api/v1/jobs/{id}` per job (the list has only an excerpt) | `search` term, or `all` | `category`, `country`; the newest 200 jobs per sync (a window, like the others) |
+
+Parameters, terms and data notes are in each package doc (`internal/ingest/{jobicy,remoteok,
+remotive,devglobaljobs}`), with a trimmed real response in `testdata/`. Checked live on
+2026-11-14: Jobicy and Remotive return their whole feed whatever the keyword, so a keyword
+narrows little there; filters (`geo`, `industry`, `category`) do. A config key outside each
+kind's list is refused when the source is created (`ingest.FeedParams`).
+
+**Closing: 30 days unseen.** An optional interface in `internal/ingest` (`feed.go`):
+```go
+// FeedAdapter lists only recent jobs: its fetch is never complete, and a posting closes
+// once no sync has seen it for StaleAfter.
+type FeedAdapter interface { StaleAfter() time.Duration }
+```
+For a feed adapter the sync skips the "missing" rule and instead calls the existing
+`ClosePostingsNotSeenSince` with `run start - StaleAfter()` (30 days for all four,
+`ingest.FeedStaleAfter`), when every posting was stored. No new query or migration for this.
+A posting seen again reopens its job, as today. A feed run that works is `succeeded`, not
+`partial`.
+- *Changed during implementation (2026-11-14):* the approved draft had feed adapters return
+  `ErrTruncated`. That would make every feed run `partial`, and the scheduler re-runs any
+  source without a recent `succeeded` run on every tick (`ListDueSources`): Remotive would
+  be called far beyond its terms. The sync recognises `FeedAdapter` instead; the behaviour
+  (never close as missing, close after 30 days unseen) is the same.
+
+**Attribution (terms).** `sources[].attribution` in `/api/v1/jobs` (ADR 0011) moves from a
+Himalayas special case to a per-kind map in `internal/api/jobs.go`:
+`himalayas` "via Himalayas", `jobicy` "via Jobicy", `remoteok` "via Remote OK", `remotive`
+"via Remotive", `devglobaljobs` "via Dev Global Jobs". The job URL stays the feed's own URL
+(each feed requires linking back to it). jobradar-web already shows `attribution` next to
+the link; it also gets a footer "Powered by Dev Global Jobs" linking https://devglobaljobs.com
+(its license asks for that visible link). Links stay followed (no `nofollow`: Remote OK).
+None of these jobs leave the app (Remotive and Himalayas forbid passing them on).
+
+**Request limits.** Optional interface `MinInterval() time.Duration`: Remotive returns 6h
+(its terms: at most 4 requests a day), Jobicy 1h (at most hourly). `SyncLocked` checks it under
+the source's lock against the last run's start, whatever that run's outcome, so the scheduler
+skips such a source quietly, and a manual `POST /sources/{id}/sync` inside the window gets 429
+with `Retry-After`. Remotive's client also retries at most once. Each adapter gets its own
+slow HTTP client, as Himalayas does.
+
+**Data.** Jobicy, Remote OK and Remotive are remote boards: `remote_policy` is `remote`. Dev
+Global Jobs is a global board (found live): `remote` only when its `country` is "Remote",
+otherwise `unknown`; an ISO `country` fills `countries`. Salary only from structured
+fields (Jobicy `salaryMin/Max/Currency/Period`; Remote OK `salary_min/max`, USD per year,
+kept only within 1,000-2,000,000 because the feed carries values like 21); none parsed from
+text (ADR 0005). Remote OK's element 0 is its legal notice and is skipped.
+
+**Migration** `00008_feed_sources.sql`: replace the `sources.kind` CHECK to add the four
+kinds; the API's `sourceKinds` filter list grows to match.
+
+**Consequences.**
+- Dedup (ADR 0005, company + title + location) links the same job seen on several feeds and
+  boards; its `sources` list shows all of them.
+- A closed job may stay open up to 30 days after it really closed; applying shows it.
+
+## Technologies and alternatives
+- Involved: stdlib `net/http` and `encoding/json`, the existing `ingest.HTTPClient`; no new dependency.
+- Alternatives:
+  - `ErrTruncated` only: feed jobs never close.
+  - Close when missing from one fetch: closes open jobs every day.
+  - Probe each job URL for 404: one request per job per sync, against the feeds' rate terms.
+  - Set `expires_at = now + 30d` on fetch: unchanged postings skip that update (`TouchPosting`), so it needs the same sync change anyway.
