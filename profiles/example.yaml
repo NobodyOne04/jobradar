@@ -1,9 +1,11 @@
-# Example candidate profile (schema_version 1, ADR 0006). A fictional person: copy this to
-# profiles/<your-name>.yaml (git-ignored), fill it from your CV, then
+# Example candidate profile (schema_version 2, ADR 0006, ADR 0015). A fictional person: copy
+# this to profiles/<your-name>.yaml (git-ignored), fill it from your CV, then
 #   jobradar profile import profiles/<your-name>.yaml
-# The file name becomes the profile name. Schema: docs/api/profile.schema.json.
-schema_version: 1
+# The file name becomes the profile name. Schema: docs/api/profile.schema.v2.json
+# (version 1, docs/api/profile.schema.json, is still accepted: it has none of the v2 fields).
+schema_version: 2
 headline: Senior data engineer building batch and streaming platforms
+target_roles: [Data Engineer, Analytics Engineer, Data Platform Engineer]   # most wanted first
 seniority: senior            # junior | mid | senior | staff | principal | lead | manager | director
 years_of_experience: 8
 
@@ -33,12 +35,18 @@ skills:                       # names are free text; the matcher maps them to it
   - { name: Kafka, level: intermediate, years: 3 }
   - { name: Go, level: basic }
 
+languages:                    # ISO 639-1 code; level A1..C2 (CEFR) or native
+  - { language: de, level: native }
+  - { language: en, level: C1 }
+
 preferences:
   employment_types: [full_time, contract]
-  remote_only: true
-  locations: [Germany, European Union]
+  remote_only: false          # true: remote jobs only; relocation below adds on-site jobs
+  locations: [Germany, European Union]   # where you can work today without moving
+  remote_regions: [emea, DE]  # remote jobs open to any of these: worldwide, apac, emea, americas or ISO codes
+  relocation: { willing: true, regions: [CH, AT, NL], needs_visa_sponsorship: false }
   timezones: { min_utc_offset: -1, max_utc_offset: 3 }
   salary: { min: 90000, currency: EUR, period: year }
-  hard_constraints: [remote_only, salary]   # gates; the other preferences are soft
+  hard_constraints: [languages, salary]     # gates; the other preferences are soft
 
 extra: {}                     # anything the schema does not cover yet

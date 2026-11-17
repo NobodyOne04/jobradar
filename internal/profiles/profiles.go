@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -22,8 +23,9 @@ import (
 	"github.com/NobodyOne04/jobradar/internal/store"
 )
 
-// SchemaVersion is the only profile schema this backend accepts.
-const SchemaVersion = 1
+// SchemaVersions are the profile schemas this backend accepts; a document names its own
+// (ADR 0006, ADR 0015).
+var SchemaVersions = []int32{1, 2}
 
 // MaxDocumentBytes bounds one profile document.
 const MaxDocumentBytes = 256 << 10
@@ -31,40 +33,57 @@ const MaxDocumentBytes = 256 << 10
 // NamePattern is the allowed profile name (also enforced by the database).
 var NamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
 
-var schema = func() *jsonschema.Schema {
-	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(apidocs.ProfileSchemaV1))
+var schemas = map[int32]*jsonschema.Schema{
+	1: compile("profile.schema.json", apidocs.ProfileSchemaV1),
+	2: compile("profile.schema.v2.json", apidocs.ProfileSchemaV2),
+}
+
+func compile(name string, raw []byte) *jsonschema.Schema {
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
 	if err != nil {
-		panic("profile schema is not JSON: " + err.Error())
+		panic(name + " is not JSON: " + err.Error())
 	}
 	c := jsonschema.NewCompiler()
-	if err := c.AddResource("profile.schema.json", doc); err != nil {
+	if err := c.AddResource(name, doc); err != nil {
 		panic(err)
 	}
-	return c.MustCompile("profile.schema.json")
-}()
+	return c.MustCompile(name)
+}
 
 // InvalidError lists why a document does not match the schema: JSON paths and rules only.
 type InvalidError struct{ Problems []string }
 
 func (e *InvalidError) Error() string { return "invalid profile: " + strings.Join(e.Problems, "; ") }
 
-// Validate checks doc against the schema and returns it unchanged if valid.
-func Validate(doc []byte) error {
+// Validate checks doc against the schema of the schema_version it names, and returns that
+// version.
+func Validate(doc []byte) (int32, error) {
 	if len(doc) > MaxDocumentBytes {
-		return &InvalidError{[]string{fmt.Sprintf("document over %d bytes", MaxDocumentBytes)}}
+		return 0, &InvalidError{[]string{fmt.Sprintf("document over %d bytes", MaxDocumentBytes)}}
+	}
+	var head struct {
+		SchemaVersion json.RawMessage `json:"schema_version"`
+	}
+	if err := json.Unmarshal(doc, &head); err != nil {
+		return 0, &InvalidError{[]string{"not valid JSON"}}
+	}
+	version, err := strconv.ParseInt(string(head.SchemaVersion), 10, 32)
+	schema, ok := schemas[int32(version)]
+	if err != nil || !ok {
+		return 0, &InvalidError{[]string{fmt.Sprintf("/schema_version: must be one of %v", SchemaVersions)}}
 	}
 	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(doc))
 	if err != nil {
-		return &InvalidError{[]string{"not valid JSON"}}
+		return 0, &InvalidError{[]string{"not valid JSON"}}
 	}
 	err = schema.Validate(inst)
 	var ve *jsonschema.ValidationError
 	if errors.As(err, &ve) {
 		var problems []string
 		collect(ve, &problems)
-		return &InvalidError{problems}
+		return 0, &InvalidError{problems}
 	}
-	return err
+	return int32(version), err
 }
 
 var english = message.NewPrinter(language.English)
@@ -102,7 +121,8 @@ type Result struct {
 // AddRevision validates doc and stores it as the profile's next revision, unless it equals
 // the latest one (then it returns that one): importing the same file twice is a no-op.
 func (s *Service) AddRevision(ctx context.Context, profileID int64, doc []byte) (Result, error) {
-	if err := Validate(doc); err != nil {
+	version, err := Validate(doc)
+	if err != nil {
 		return Result{}, err
 	}
 	tx, err := s.Pool.Begin(ctx)
@@ -127,7 +147,7 @@ func (s *Service) AddRevision(ctx context.Context, profileID int64, doc []byte) 
 		return Result{}, err
 	}
 	rev, err := q.InsertRevision(ctx, store.InsertRevisionParams{
-		ProfileID: profileID, Revision: next, SchemaVersion: SchemaVersion, Data: doc,
+		ProfileID: profileID, Revision: next, SchemaVersion: version, Data: doc,
 	})
 	if err != nil {
 		return Result{}, err
@@ -140,7 +160,7 @@ func (s *Service) Import(ctx context.Context, name string, doc []byte) (Result, 
 	if !NamePattern.MatchString(name) {
 		return Result{}, fmt.Errorf("profile name %q: use lowercase letters, digits, - and _", name)
 	}
-	if err := Validate(doc); err != nil { // before creating an empty profile
+	if _, err := Validate(doc); err != nil { // before creating an empty profile
 		return Result{}, err
 	}
 	q := store.New(s.Pool)

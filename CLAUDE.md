@@ -45,8 +45,11 @@ git -C ../jobradar-matcher switch --detach "$(cat contracts/MATCHER_REF)"
 - `docs/sources.json`: reviewed catalog of candidate source kinds (job-board APIs, ATS
   platforms), each live-checked, with its terms; `implemented_in_jobradar` marks existing adapters.
   Not read by the code: a new kind still follows the "new source kind" rule below
-- `docs/api/profile.schema.json`: the profile contract, embedded by `docs/api/embed.go`
-  (package `apidocs`); a schema change means a new `schema_version`, never an edit of v1
+- `docs/api/profile.schema.json` (v1) and `profile.schema.v2.json` (v2, ADR 0015): the profile
+  contracts, embedded by `docs/api/embed.go` (package `apidocs`); `profiles.Validate` picks the
+  schema by the document's `schema_version` and the revision stores it. A schema change means a
+  new file and `schema_version`, never an edit of an existing one; the matcher's `Profile`
+  must accept a version before a profile of that version is imported
 - `profiles/example.yaml`: a fictional profile; real ones (`profiles/*.yaml`) are git-ignored
 - `internal/metrics/`: Prometheus metrics (/metrics); route labels are ServeMux patterns, never
   raw paths (bounded label values)

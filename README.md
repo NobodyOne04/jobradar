@@ -89,7 +89,11 @@ curl -X PATCH localhost:8080/api/v1/sources/1 -d '{"enabled":false}'
 ## Your profile
 
 The matcher compares jobs with a candidate profile you write from your CV
-([ADR 0006](docs/adr/0006-candidate-profiles.adr), schema in `docs/api/profile.schema.json`).
+([ADR 0006](docs/adr/0006-candidate-profiles.adr)). Schema version 2
+(`docs/api/profile.schema.v2.json`, [ADR 0015](docs/adr/0015-profile-schema-v2.adr)) adds the
+roles you want, your languages, which remote jobs you can reach and whether you would relocate;
+version 1 (`docs/api/profile.schema.json`) is still accepted. `profiles/example.yaml` shows v2.
+Import a v2 profile only once the pinned matcher accepts it (its `Profile` lists version 2).
 
 ```sh
 cp profiles/example.yaml profiles/anna.yaml      # git-ignored: only example.yaml is tracked
