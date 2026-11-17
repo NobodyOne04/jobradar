@@ -14,7 +14,7 @@ of open jobs are excluded by the location gate because v1 can only say "remote o
 these countries". The new matcher features need inputs v1 lacks: `jobradar-matcher` ADR 0006 (eligibility)
 and 0007 (cross-encoder role fit).
 
-**Schema** (`docs/api/profile.schema.json`, `schema_version: 2`; all new fields optional):
+**Schema** (`docs/api/profile.schema.v2.json`, `schema_version: 2`; all new fields optional):
 ```yaml
 target_roles: [Data Engineer, Analytics Engineer, Data Platform Engineer]   # 1-10 strings
 languages:                                   # CEFR levels A1..C2, or "native"
@@ -42,6 +42,16 @@ working, and the matcher treats missing v2 fields as unknown (never a mismatch).
 `profiles/<name>.yaml`): target roles as above, English C1 (you said B2-C1; C1 is used for
 "fluent English", B2 would fail "C1 required" postings), Russian native, remote regions
 worldwide + APAC + Thailand, relocation anywhere, visa sponsorship needed.
+
+**Implementation notes (2026-11-17).**
+- v2 is a new file, `docs/api/profile.schema.v2.json`; `docs/api/profile.schema.json` stays v1
+  byte for byte. `profiles.Validate` reads `schema_version`, validates against that file and
+  returns the version, which `AddRevision` stores (it was a constant 1).
+- The hard-constraint names `languages` and `work_authorization` are accepted in v2 now; the
+  matcher evaluates them from its ADR 0006 on.
+- `profiles/example.yaml` (fictional) is v2; tests check that a v1 document still validates.
+- Your own v2 revision is imported together with matcher ADR 0006: before that, the matcher
+  would drop your remote/Thailand rule without applying the new language and visa rules.
 
 **Matcher side:** `Profile` (`src/matcher/schemas/`) accepts v1 and v2; the contract
 (`openapi.yaml`) gains the fields; a new matcher release, re-pinned here.

@@ -15,6 +15,7 @@
 - Empty source and run lists are `[]` instead of `null`
 
 ### Added
+- Profile schema version 2: target roles, languages (CEFR), remote regions and relocation with visa sponsorship; v1 profiles stay valid, each revision records its version (ADR 0015)
 - ADR 0015 (Accepted): profile schema v2 with target roles, languages, relocation and remote regions
 - `/api/v1/jobs/{id}` also returns `description_html`, for formatted descriptions in the web UI
 - Company boards on SmartRecruiters, Workable, Recruitee, Personio, Breezy, Teamtailor and Rippling; descriptions fetched per job only when new or changed; board tokens validated; an empty first sync says "check board_token" (ADR 0014)

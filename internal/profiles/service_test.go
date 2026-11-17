@@ -32,7 +32,7 @@ func TestImportIsIdempotentAndNumbersRevisions(t *testing.T) {
 	doc := exampleJSON(t)
 
 	first, err := svc.Import(ctx, "anna", doc)
-	if err != nil || !first.Created || first.Revision.Revision != 1 {
+	if err != nil || !first.Created || first.Revision.Revision != 1 || first.Revision.SchemaVersion != 2 {
 		t.Fatalf("first import: %+v, %v", first, err)
 	}
 
@@ -50,6 +50,20 @@ func TestImportIsIdempotentAndNumbersRevisions(t *testing.T) {
 	second, err := svc.Import(ctx, "anna", changed)
 	if err != nil || !second.Created || second.Revision.Revision != 2 {
 		t.Fatalf("changed import: %+v, %v", second, err)
+	}
+
+	// A v1 document is still accepted, and its revision records version 1 (ADR 0015).
+	m["schema_version"] = 1
+	delete(m, "target_roles")
+	delete(m, "languages")
+	prefs := m["preferences"].(map[string]any)
+	delete(prefs, "remote_regions")
+	delete(prefs, "relocation")
+	prefs["hard_constraints"] = []any{"salary"}
+	v1, _ := json.Marshal(m)
+	third, err := svc.Import(ctx, "anna", v1)
+	if err != nil || third.Revision.Revision != 3 || third.Revision.SchemaVersion != 1 {
+		t.Fatalf("v1 import: %+v, %v", third, err)
 	}
 }
 

@@ -45,7 +45,7 @@ func TestProfilesAPI(t *testing.T) {
 	rec = do(h, "GET", "/api/v1/profiles/1/revisions/latest", "")
 	var rev store.ProfileRevision
 	_ = json.Unmarshal(rec.Body.Bytes(), &rev)
-	if rec.Code != 200 || rev.Revision != 1 || rev.SchemaVersion != 1 || !strings.Contains(string(rev.Data), "Example Logistics") {
+	if rec.Code != 200 || rev.Revision != 1 || rev.SchemaVersion != 2 || !strings.Contains(string(rev.Data), "Example Logistics") {
 		t.Errorf("latest: %d %s", rec.Code, rec.Body)
 	}
 	assertProblem(t, do(h, "GET", "/api/v1/profiles/1/revisions/7", ""), 404)
