@@ -1,0 +1,55 @@
+# 0015. Profile schema v2: target roles, languages, relocation, remote regions
+
+- Status: Proposed
+- Date: 2026-11-17
+
+Profile schema version 2 adds what the matcher needs to judge role fit and eligibility:
+the roles you want, the languages you speak, whether you would relocate, and which remote
+jobs count as reachable. v1 revisions stay valid and are matched as before.
+
+## Technical details
+
+**Problem.** Matching ranks poorly (NDCG@10 0.67 on the eval set) mostly on role fit, and 90%
+of open jobs are excluded by the location gate because v1 can only say "remote only, from
+these countries". The new matcher features need inputs v1 lacks: `jobradar-matcher` ADR 0006 (eligibility)
+and 0007 (cross-encoder role fit).
+
+**Schema** (`docs/api/profile.schema.json`, `schema_version: 2`; all new fields optional):
+```yaml
+target_roles: [Data Engineer, Analytics Engineer, Data Platform Engineer]   # 1-10 strings
+languages:                                   # CEFR levels A1..C2, or "native"
+  - {language: en, level: C1}                # ISO 639-1 code
+  - {language: ru, level: native}
+preferences:
+  remote_regions: [worldwide, apac, TH]      # remote jobs open to any of these count as reachable
+  relocation:
+    willing: true
+    regions: [worldwide]                     # where you would move: worldwide, regions or ISO countries
+    needs_visa_sponsorship: true             # a posting that rules sponsorship out is a mismatch
+```
+- `remote_regions` and `relocation.regions` use the matcher's existing region names
+  (`worldwide`, `apac`, `emea`, `americas`, ...) or ISO 3166-1 alpha-2 codes.
+- `remote_only` stays in v2 and means what it did; with `relocation.willing`, on-site and
+  hybrid jobs in `relocation.regions` are eligible too, so `remote_only` becomes `false` for you.
+- `locations` (v1) is kept for countries you can work from today without moving.
+
+**Rules that do not change** (ADR 0006): revisions are immutable, a schema change is a new
+`schema_version`, never an edit of v1; `POST /profiles/{id}/revisions` and
+`jobradar profile import` validate against the version the document names; v1 documents keep
+working, and the matcher treats missing v2 fields as unknown (never a mismatch).
+
+**Your v2 revision** (from the decisions of 2026-11-17, in your git-ignored
+`profiles/<name>.yaml`): target roles as above, English C1 (you said B2-C1; C1 is used for
+"fluent English", B2 would fail "C1 required" postings), Russian native, remote regions
+worldwide + APAC + Thailand, relocation anywhere, visa sponsorship needed.
+
+**Matcher side:** `Profile` (`src/matcher/schemas/`) accepts v1 and v2; the contract
+(`openapi.yaml`) gains the fields; a new matcher release, re-pinned here.
+
+## Technologies and alternatives
+- Involved: JSON Schema (the embedded `docs/api/profile.schema.json`), pydantic in the matcher.
+- Alternatives:
+  - Put the new fields in `extra`: no validation, and the matcher would read an untyped bag.
+  - Derive target roles from the headline and past titles: weaker; a past title is not
+    always the role you want next.
+  - Edit v1 in place: against ADR 0006 (old revisions would change meaning).

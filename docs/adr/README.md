@@ -20,3 +20,4 @@ Matcher-internal decisions live in `jobradar-matcher/docs/adr/`.
 | [0012](0012-web-ui.adr) | Web UI: static HTML+JS in its own repo, served by nginx on the same origin | Accepted |
 | [0013](0013-feed-sources.adr) | Feed sources: Jobicy, Remote OK, Remotive, Dev Global Jobs; closed after 30 days unseen | Accepted |
 | [0014](0014-more-ats-sources.adr) | More company boards: SmartRecruiters, Workable, Recruitee, Personio, Breezy, Teamtailor, Rippling | Accepted |
+| [0015](0015-profile-schema-v2.adr) | Profile schema v2: target roles, languages, relocation, remote regions | Proposed |

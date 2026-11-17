@@ -15,6 +15,7 @@
 - Empty source and run lists are `[]` instead of `null`
 
 ### Added
+- ADR 0015 (Proposed): profile schema v2 with target roles, languages, relocation and remote regions
 - `/api/v1/jobs/{id}` also returns `description_html`, for formatted descriptions in the web UI
 - Company boards on SmartRecruiters, Workable, Recruitee, Personio, Breezy, Teamtailor and Rippling; descriptions fetched per job only when new or changed; board tokens validated; an empty first sync says "check board_token" (ADR 0014)
 - Feed sources Jobicy, Remote OK, Remotive and Dev Global Jobs: saved feed filters, jobs close after 30 days unseen, "via <board>" attribution, Remotive at most every 6h and Jobicy hourly (manual syncs get 429 sooner) (ADR 0013)
