@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- Matcher pinned to 0.5.1 (987e2de): a remote job must admit your whole region ("remote, Japan" now needs relocation); postings in Japanese, Korean, Chinese, Thai or Cyrillic are recognized
 - Matcher pinned to 0.5.0 (d279dca): eligibility for profile v2 (languages, relocation, remote regions, visa sponsorship; matcher ADR 0006), linear-time eligibility regexes
 - Matcher pinned to 0.4.0 (67e5200): profile schema v2 accepted (ADR 0015); includes 0.3.2's location precision (boilerplate "worldwide" no longer opens a job; the location field wins over regions in the text; cities and US states known)
 - Source catalog `docs/sources.json`: 9 job-board APIs and 10 ATS platforms checked live, with their terms; 10 unsuitable ones listed as removed
