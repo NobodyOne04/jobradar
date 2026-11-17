@@ -1,6 +1,6 @@
 # 0015. Profile schema v2: target roles, languages, relocation, remote regions
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-17
 
 Profile schema version 2 adds what the matcher needs to judge role fit and eligibility:
